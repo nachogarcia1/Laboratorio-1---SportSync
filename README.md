@@ -1,1 +1,1 @@
-# Laboratorio-1---SportSync
+# Laboratorio-1---SportSync.
