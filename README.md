@@ -1,3 +1,3 @@
-# SportSync.
+# SportSync
 
 SportSync es una aplicación web diseñada para la gestión y reserva de canchas deportivas en una red de sedes distribuidas en Buenos Aires. La plataforma permite a los usuarios registrarse, consultar disponibilidad en tiempo real, realizar reservas y contratar servicios adicionales de manera centralizada, segura y eficiente. El sistema contempla distintos tipos de usuarios —socios y no socios— con beneficios diferenciados, así como un panel de administración para la gestión de sedes, canchas, reservas y usuarios. Además, incorpora control de concurrencia para evitar conflictos de reservas, cálculo dinámico de precios según múltiples variables y una arquitectura basada en bases de datos relacionales y no relacionales, garantizando escalabilidad, consistencia y una experiencia realista de gestión deportiva.
