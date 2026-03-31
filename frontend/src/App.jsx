@@ -73,7 +73,7 @@ function App() {
       <ul>
         {usuarios.map((u) => (
           <li key={u.id}>
-            {u.nombre} - {u.email}
+            name: {u.nombre} - mail: {u.email}
           </li>
         ))}
       </ul>

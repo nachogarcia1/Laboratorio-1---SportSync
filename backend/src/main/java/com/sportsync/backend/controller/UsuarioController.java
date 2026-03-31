@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin(origins = "http://localhost:5173")
+
+
 @RestController
 @RequestMapping("/usuarios")
 public class UsuarioController {
@@ -21,8 +24,13 @@ public class UsuarioController {
         return service.listar();
     }
 
-    @PostMapping("/create")
+    @PostMapping
     public Usuario create(@RequestBody Usuario usuario) {
         return service.crearUsuario(usuario);
+    }
+
+    @DeleteMapping("/{id}")
+    public void eliminar(@PathVariable Long id) {
+        service.eliminarUsuario(id);
     }
 }
