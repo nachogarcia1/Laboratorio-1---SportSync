@@ -1,2 +1,35 @@
+# 🔹 Claude
 .claude/
-.claude/
+
+# 🔹 Node / Frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# 🔹 Env
+.env
+.env.*
+
+# 🔹 IDEs
+.idea/
+.vscode/
+
+# 🔹 Java / IntelliJ / Spring
+target/
+*.class
+*.jar
+*.war
+*.iml
+out/
+
+# 🔹 OS
+.DS_Store
+Thumbs.db
+
+# 🔹 Logs
+*.log
+logs/
+
+# 🔹 Misc
+coverage/
