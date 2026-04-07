@@ -1,7 +1,6 @@
 package com.sportsync.backend.model;
 
 import jakarta.persistence.*;
-import lombok.Setter;
 
 @Entity
 @Table(name = "usuario")
@@ -11,31 +10,25 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Setters
-    @Setter
     @Column(nullable = false)
     private String nombre;
 
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Setter
     @Column(nullable = false)
     private String password;
 
     @Column(nullable = false, unique = true)
     private String dni;
 
-    @Setter
     @Column
     private String telefono;
 
-    @Setter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Rol rol = Rol.NO_SOCIO;
 
-    @Setter
     @Column(nullable = false)
     private boolean activo = true;
 
@@ -52,4 +45,12 @@ public class Usuario {
     public Rol getRol()         { return rol; }
     public boolean isActivo()   { return activo; }
 
+    // Setters
+    public void setNombre(String nombre)     { this.nombre = nombre; }
+    public void setEmail(String email)       { this.email = email; }
+    public void setPassword(String password) { this.password = password; }
+
+    public void setTelefono(String telefono) { this.telefono = telefono; }
+    public void setRol(Rol rol)              { this.rol = rol; }
+    public void setActivo(boolean activo)    { this.activo = activo; }
 }
