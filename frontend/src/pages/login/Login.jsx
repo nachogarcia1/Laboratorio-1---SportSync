@@ -1,0 +1,106 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Navbar from "../../components/navbar/Navbar";
+import Footer from "../../components/footer/Footer";
+import "./Login.css";
+
+function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch("http://localhost:8080/usuarios/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al iniciar sesión");
+      }
+
+      localStorage.setItem("usuario", JSON.stringify(data));
+      navigate("/home");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <Navbar />
+
+      <main className="login-page__main">
+        <div className="login-card">
+          <h1 className="login-card__title">Acceso a SportSync</h1>
+
+          <div className="login-card__tabs">
+            <button className="login-card__tab login-card__tab--active">
+              Iniciar Sesión
+            </button>
+            <button
+              className="login-card__tab"
+              onClick={() => navigate("/register")}
+            >
+              Registrarse
+            </button>
+          </div>
+
+          <form className="login-form" onSubmit={handleLogin}>
+            <label>Correo Electrónico</label>
+            <input
+              type="email"
+              placeholder="Correo Electrónico"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            <label>Contraseña</label>
+            <input
+              type="password"
+              placeholder="Contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <div className="login-form__forgot">Olvidé mi contraseña</div>
+
+            <button className="login-form__primary-btn" type="submit">
+              Iniciar Sesión
+            </button>
+
+            <div className="login-form__separator">o</div>
+
+            <div className="login-form__social-row">
+              <button
+                type="button"
+                className="login-form__social-btn login-form__social-btn--google"
+              >
+                G Continuar con Google
+              </button>
+
+              <button
+                type="button"
+                className="login-form__social-btn login-form__social-btn--facebook"
+              >
+                f Continuar con Facebook
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+export default Login;
