@@ -7,10 +7,12 @@ import "./Login.css";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
 
     try {
       const response = await fetch("http://localhost:8080/usuarios/login", {
@@ -30,7 +32,7 @@ function Login() {
       localStorage.setItem("usuario", JSON.stringify(data));
       navigate("/home");
     } catch (error) {
-      alert(error.message);
+      setError(error.message);
     }
   };
 
@@ -73,6 +75,7 @@ function Login() {
 
             <div className="login-form__forgot">Olvidé mi contraseña</div>
 
+            {error && <p className="form__error">{error}</p>}
             <button className="login-form__primary-btn" type="submit">
               Iniciar Sesión
             </button>
