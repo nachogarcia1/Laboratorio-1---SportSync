@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../../components/navbar/Navbar";
+import NavbarPublic from "../../components/navbar/NavbarPublic";
 import Footer from "../../components/footer/Footer";
 import "./Register.css";
 
 function Register() {
   const navigate = useNavigate();
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     nombre: "",
@@ -19,14 +20,15 @@ function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setError("");
 
     if (form.password !== form.confirmarPassword) {
-      alert("Las contraseñas no coinciden");
+      setError("Las contraseñas no coinciden");
       return;
     }
 
     if (!form.aceptaTerminos) {
-      alert("Debes aceptar los términos y condiciones");
+      setError("Debes aceptar los términos y condiciones");
       return;
     }
 
@@ -54,13 +56,13 @@ function Register() {
       alert("Usuario registrado correctamente");
       navigate("/");
     } catch (error) {
-      alert(error.message);
+      setError(error.message);
     }
   };
 
   return (
     <div className="register-page">
-      <Navbar />
+      <NavbarPublic />
 
       <main className="register-page__main">
         <div className="register-card">
@@ -74,7 +76,7 @@ function Register() {
               Iniciar sesión
             </button>
             <button className="register-card__tab register-card__tab--active">
-              Registrase
+              Registrarse
             </button>
           </div>
 
@@ -142,6 +144,7 @@ function Register() {
               </span>
             </div>
 
+            {error && <p className="form__error">{error}</p>}
             <button className="register-form__primary-btn" type="submit">
               Registrarse
             </button>

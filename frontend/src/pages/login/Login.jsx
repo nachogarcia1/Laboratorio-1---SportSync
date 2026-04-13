@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../../components/navbar/Navbar";
+import NavbarPublic from "../../components/navbar/NavbarPublic";
 import Footer from "../../components/footer/Footer";
 import "./Login.css";
 
@@ -29,7 +29,13 @@ function Login() {
         throw new Error(data.error || "Error al iniciar sesión");
       }
 
-      localStorage.setItem("usuario", JSON.stringify(data));
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("usuario", JSON.stringify({
+        id:     data.id,
+        nombre: data.nombre,
+        email:  data.email,
+        rol:    data.rol
+      }));
       navigate("/home");
     } catch (error) {
       setError(error.message);
@@ -38,7 +44,7 @@ function Login() {
 
   return (
     <div className="login-page">
-      <Navbar />
+      <NavbarPublic />
 
       <main className="login-page__main">
         <div className="login-card">
