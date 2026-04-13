@@ -32,3 +32,20 @@
     justify-content: center;
   }
 }
+
+.navbar__logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  text-decoration: none;
+}
+
+.navbar__logout-btn {
+  background: transparent;
+  color: white;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}

@@ -1,13 +1,16 @@
-import Navbar from "../../components/navbar/Navbar";
+import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Home.css";
 
 function Home() {
-  const usuario = JSON.parse(localStorage.getItem("usuario"));
+  const usuario = (() => {
+    try { return JSON.parse(sessionStorage.getItem("usuario")); }
+    catch { return null; }
+  })();
 
   return (
     <div className="home-page">
-      <Navbar />
+      <NavbarPrivate />
 
       <main className="home-page__main">
         <h1 className="home-page__title">Encuentra y Reserva Tu Cancha Perfecta</h1>

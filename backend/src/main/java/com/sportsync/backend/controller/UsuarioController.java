@@ -13,9 +13,11 @@ import java.util.Map;
 public class UsuarioController {
 
     private final UsuarioService service;
+    private final com.sportsync.backend.config.JwtUtil jwtUtil;
 
-    public UsuarioController(UsuarioService service) {
+    public UsuarioController(UsuarioService service, com.sportsync.backend.config.JwtUtil jwtUtil) {
         this.service = service;
+        this.jwtUtil = jwtUtil;
     }
 
     // ── UC-01: Registrarse ────────────────────────────────────────────────────
@@ -40,7 +42,9 @@ public class UsuarioController {
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         try {
             Usuario usuario = service.login(body.get("email"), body.get("password"));
+            String token = jwtUtil.generarToken(usuario.getEmail(), usuario.getRol().name());
             return ResponseEntity.ok(Map.of(
+                    "token",  token,
                     "id",     usuario.getId(),
                     "nombre", usuario.getNombre(),
                     "email",  usuario.getEmail(),
@@ -50,6 +54,7 @@ public class UsuarioController {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
         }
     }
+
 
     // ── UC-03: Ver perfil ─────────────────────────────────────────────────────
     // GET /usuarios/{id}

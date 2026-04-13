@@ -28,3 +28,13 @@ input,
 select {
   font: inherit;
 }
+
+.form__error {
+  color: var(--danger);
+  font-size: 14px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: #fdecea;
+  border-left: 3px solid var(--danger);
+  border-radius: 4px;
+}

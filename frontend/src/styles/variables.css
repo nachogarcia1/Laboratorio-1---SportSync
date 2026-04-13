@@ -3,10 +3,15 @@
   --blue: #2f66e8;
   --blue-dark: #234fc0;
   --light-bg: #f3f4f6;
+  --light-card: #f7f7f8;
   --mid-gray: #cfd4dc;
   --text-main: #1b1f23;
+  --text-soft: #5f6773;
   --banner-bg: #dfeafc;
   --danger: #ea2f2f;
   --facebook: #294bbb;
   --filter: #4c5562;
+  --border-card: #d6dbe3;
+  --light-card: #ffffff;
+  --border-card: #e2e5ea;
 }
