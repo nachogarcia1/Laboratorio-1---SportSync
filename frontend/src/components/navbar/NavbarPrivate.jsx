@@ -3,6 +3,10 @@ import "./Navbar.css";
 
 function NavbarPrivate() {
   const navigate = useNavigate();
+  const usuario = (() => {
+    try { return JSON.parse(sessionStorage.getItem("usuario")); }
+    catch { return null; }
+  })();
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -16,7 +20,10 @@ function NavbarPrivate() {
         <Link to="/home">Inicio</Link>
         <a href="#">Sedes</a>
         <a href="#">Mis Reservas</a>
-        <a href="#">Perfil</a>
+        <Link to="/perfil">Perfil</Link>
+        {usuario?.rol === "ADMIN" && (
+            <Link to="/admin">Panel Admin</Link>
+        )}
         <button className="navbar__logout-btn" onClick={handleLogout}>
           Cerrar Sesión
         </button>

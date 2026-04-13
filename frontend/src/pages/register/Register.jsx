@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../../utils/api";
 import NavbarPublic from "../../components/navbar/NavbarPublic";
 import Footer from "../../components/footer/Footer";
 import "./Register.css";
@@ -27,17 +28,19 @@ function Register() {
       return;
     }
 
+    if (form.password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
     if (!form.aceptaTerminos) {
       setError("Debes aceptar los términos y condiciones");
       return;
     }
 
     try {
-      const response = await fetch("http://localhost:8080/usuarios/register", {
+      await apiFetch("/usuarios/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
         body: JSON.stringify({
           nombre: form.nombre,
           email: form.email,
@@ -46,12 +49,6 @@ function Register() {
           telefono: form.telefono
         })
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error al registrarse");
-      }
 
       alert("Usuario registrado correctamente");
       navigate("/");
@@ -120,15 +117,22 @@ function Register() {
               type="text"
               placeholder="Ingresa tu DNI"
               value={form.dni}
-              onChange={(e) => setForm({ ...form, dni: e.target.value })}
+              onChange={(e) => {
+                const valor = e.target.value.replace(/\D/g, "");
+                setForm({ ...form, dni: valor });
+              }}
             />
+            
 
             <label>Teléfono</label>
             <input
               type="text"
               placeholder="Ingresa tu teléfono"
               value={form.telefono}
-              onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+              onChange={(e) => {
+                const valor = e.target.value.replace(/\D/g, "");
+                setForm({ ...form, telefono: valor });
+              }}
             />
 
             <div className="register-form__checkbox-row">

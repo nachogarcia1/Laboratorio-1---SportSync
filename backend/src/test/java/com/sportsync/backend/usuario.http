@@ -1,5 +1,5 @@
 
-DELETE http://localhost:8080/usuarios/11
+DELETE http://localhost:8080/usuario/3
 
 
 

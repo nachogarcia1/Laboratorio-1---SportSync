@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../../utils/api";
 import NavbarPublic from "../../components/navbar/NavbarPublic";
 import Footer from "../../components/footer/Footer";
 import "./Login.css";
@@ -15,19 +16,10 @@ function Login() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:8080/usuarios/login", {
+      const data = await apiFetch("/usuarios/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
         body: JSON.stringify({ email, password })
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error al iniciar sesión");
-      }
 
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("usuario", JSON.stringify({
