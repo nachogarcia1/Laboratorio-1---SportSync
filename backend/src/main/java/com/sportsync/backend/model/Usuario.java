@@ -49,8 +49,10 @@ public class Usuario {
     public void setNombre(String nombre)     { this.nombre = nombre; }
     public void setEmail(String email)       { this.email = email; }
     public void setPassword(String password) { this.password = password; }
+    public void setDni(String dni) { this.dni = dni; }
 
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public void setRol(Rol rol)              { this.rol = rol; }
     public void setActivo(boolean activo)    { this.activo = activo; }
+
 }

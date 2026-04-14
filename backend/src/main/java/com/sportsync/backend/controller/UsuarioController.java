@@ -79,6 +79,9 @@ public class UsuarioController {
             Usuario actualizado = service.editarPerfil(
                     id,
                     body.get("nombre"),
+                    body.get("email"),
+                    body.get("dni"),
+                    body.get("telefono"),
                     body.get("password")
             );
             return ResponseEntity.ok(actualizado);
