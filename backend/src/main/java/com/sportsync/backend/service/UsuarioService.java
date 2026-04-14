@@ -74,13 +74,21 @@ public class UsuarioService {
 
     // ── Editar perfil ─────────────────────────────────────────────────────────
 
-    public Usuario editarPerfil(Long id, String nuevoNombre, String nuevaPassword) {
+    public Usuario editarPerfil(Long id, String nuevoNombre, String nuevoEmail, String nuevoDni, String nuevoTelefono, String nuevaPassword) {
         Usuario usuario = obtenerPorId(id);
 
         if (nuevoNombre != null && !nuevoNombre.isBlank()) {
             usuario.setNombre(nuevoNombre);
         }
-
+        if (nuevoEmail != null && !nuevoEmail.isBlank()) {
+            usuario.setEmail(nuevoEmail);
+        }
+        if (nuevoDni != null && !nuevoDni.isBlank()) {
+            usuario.setDni(nuevoDni);
+        }
+        if (nuevoTelefono != null && !nuevoTelefono.isBlank()) {
+            usuario.setTelefono(nuevoTelefono);
+        }
         if (nuevaPassword != null && !nuevaPassword.isBlank()) {
             usuario.setPassword(passwordEncoder.encode(nuevaPassword));
         }
