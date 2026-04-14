@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiFetch } from "../../utils/api";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Perfil.css";
@@ -10,6 +11,15 @@ function Perfil() {
   })();
 
   const [tabActiva, setTabActiva] = useState("canchas");
+
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [form, setForm] = useState({
+    nombre:   usuario?.nombre || "",
+    email:    usuario?.email  || "",
+    dni:      "",
+    telefono: "",
+    error:    ""
+  });
 
   // Hardcoded visual — se conecta al backend después
   const stats = {
@@ -27,6 +37,52 @@ function Perfil() {
     Array.from({ length: 5 }, (_, i) => (
       <span key={i} className={i < rating ? "estrella--llena" : "estrella--vacia"}>★</span>
     ));
+
+
+
+  const handleAbrirModal = async () => {
+    try {
+      const data = await apiFetch(`/usuarios/${usuario.id}`);
+      setForm({
+        nombre:   data.nombre   || "",
+        email:    data.email    || "",
+        dni:      data.dni      || "",
+        telefono: data.telefono || "",
+        error:    ""
+      });
+      setModalAbierto(true);
+    } catch (error) {
+      console.error("Error al cargar perfil:", error);
+    }
+  };
+
+  const handleCerrarModal = () => setModalAbierto(false);
+
+  const handleGuardar = async (e) => {
+    e.preventDefault();
+    setForm((f) => ({ ...f, error: "" }));
+    try {
+      const data = await apiFetch(`/usuarios/${usuario.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          nombre:   form.nombre,
+          email:    form.email,
+          dni:      form.dni,
+          telefono: form.telefono
+        })
+      });
+      // Actualizar sessionStorage con los nuevos datos
+      sessionStorage.setItem("usuario", JSON.stringify({
+        ...usuario,
+        nombre: form.nombre,
+        email:  form.email
+      }));
+      setModalAbierto(false);
+    } catch (error) {
+      setForm((f) => ({ ...f, error: error.message }));
+    }
+  };
+
 
   return (
     <div className="perfil-page">
@@ -54,7 +110,7 @@ function Perfil() {
               <span className="perfil-info--placeholder">No disponible</span>
             </div>
 
-            <button className="perfil-edit-btn">Editar Perfil</button>
+            <button className="perfil-edit-btn" onClick={handleAbrirModal}>Editar Perfil</button>
 
             <hr className="perfil-divider" />
 
@@ -139,6 +195,62 @@ function Perfil() {
           </div>
         </div>
       </main>
+
+      {modalAbierto && (
+        <div className="modal-overlay" onClick={handleCerrarModal}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+
+            <div className="modal-header">
+              <h2 className="modal-title">Editar Perfil</h2>
+              <button className="modal-close" onClick={handleCerrarModal}>✕</button>
+            </div>
+
+            <form className="modal-form" onSubmit={handleGuardar}>
+              <label>Nombre Completo</label>
+              <input
+                type="text"
+                value={form.nombre}
+                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              />
+
+              <label>Correo Electrónico</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+
+              <label>DNI</label>
+              <input
+                type="text"
+                placeholder="Ingresa tu DNI"
+                value={form.dni}
+                onChange={(e) => setForm({ ...form, dni: e.target.value.replace(/\D/g, "") })}
+              />
+
+              <label>Teléfono</label>
+              <input
+                type="text"
+                placeholder="Ingresa tu teléfono"
+                value={form.telefono}
+                onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/\D/g, "") })}
+              />
+
+              {form.error && <p className="form__error">{form.error}</p>}
+
+              <div className="modal-actions">
+                <button type="button" className="modal-btn-cancel" onClick={handleCerrarModal}>
+                  Cancelar
+                </button>
+                <button type="submit" className="modal-btn-save">
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
