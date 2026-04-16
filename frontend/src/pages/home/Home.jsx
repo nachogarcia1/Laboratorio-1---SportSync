@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Home.css";
@@ -7,6 +8,7 @@ function Home() {
     try { return JSON.parse(sessionStorage.getItem("usuario")); }
     catch { return null; }
   })();
+  const navigate = useNavigate();
 
   return (
     <div className="home-page">
@@ -18,12 +20,14 @@ function Home() {
           Explora la mejor red de sedes deportivas en Buenos Aires. ¡Tu próximo partido te espera!
         </p>
 
+        {usuario?.rol === "SOCIO" && (
         <section className="home-banner">
           <div className="home-banner__text">
             ⓘ ¡Eres socio! Disfruta de descuentos exclusivos y prioridad en reservas.
           </div>
           <button className="home-banner__button">Ver Beneficios</button>
         </section>
+        )}
 
         <section className="home-search">
           <h2 className="home-search__title">Busca tu Cancha</h2>
@@ -47,41 +51,12 @@ function Home() {
         </h2>
 
         <section className="home-cards">
-          <article className="home-card">
-            <h3>Sede Palermo</h3>
-            <p>Descripción breve o contenido de la tarjeta.</p>
-            <div className="home-card__image"></div>
-            <div className="home-card__info">
-              <span>📍 Palermo, CABA</span>
-              <span className="home-card__rating">★ 4.5</span>
-            </div>
-            <button>Ver Detalles</button>
-          </article>
-
-          <article className="home-card">
-            <h3>Sede Belgrano</h3>
-            <p>Descripción breve o contenido de la tarjeta.</p>
-            <div className="home-card__image"></div>
-            <div className="home-card__info">
-              <span>📍 Belgrano, CABA</span>
-              <span className="home-card__rating">★ 4.2</span>
-            </div>
-            <button>Ver Detalles</button>
-          </article>
-
-          <article className="home-card">
-            <h3>Sede Caballito</h3>
-            <p>Descripción breve o contenido de la tarjeta.</p>
-            <div className="home-card__image"></div>
-            <div className="home-card__info">
-              <span>📍 Caballito, CABA</span>
-              <span className="home-card__rating">★ 4.8</span>
-            </div>
-            <button>Ver Detalles</button>
-          </article>
+          <p className="home-sedes-placeholder">
+            Las sedes destacadas estarán disponibles próximamente.
+          </p>
         </section>
 
-        <button className="home-page__all-sedes-btn">
+        <button className="home-page__all-sedes-btn" onClick={() => navigate("/sedes")}>
           Explorar Todas las Sedes
         </button>
       </main>

@@ -2,6 +2,7 @@ package com.sportsync.backend.model;
 
 import jakarta.persistence.*;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "sede")
@@ -36,6 +37,8 @@ public class Sede {
     public String getDireccion()  { return direccion; }
     public String getHorarios()   { return horarios; }
     public boolean isActiva()     { return activa; }
+
+    @JsonIgnore
     public List<Cancha> getCanchas() { return canchas; }
 
     // Setters

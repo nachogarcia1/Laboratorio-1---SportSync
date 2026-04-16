@@ -7,6 +7,8 @@ import PublicRoute from "./routes/PublicRoute";
 import Perfil from "./pages/perfil/Perfil";
 import Admin from "./pages/admin/Admin";
 import AdminRoute from "./routes/AdminRoute";
+import Sedes from "./pages/sedes/Sedes";
+import SedeDetalle from "./pages/sedes/SedeDetalle";
 
 function App() {
   return (
@@ -41,6 +43,18 @@ function App() {
           <AdminRoute>
             <Admin />
           </AdminRoute>
+        } />
+
+        <Route path="/sedes" element={
+          <ProtectedRoute>
+            <Sedes />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/sedes/:id" element={
+          <ProtectedRoute>
+            <SedeDetalle />
+          </ProtectedRoute>
         } />
         
       </Routes>
