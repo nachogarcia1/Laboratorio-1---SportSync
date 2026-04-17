@@ -7,6 +7,18 @@ import "./SedeDetalle.css";
 
 const DIAS  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const HORA_APERTURA = 8;
+const HORA_CIERRE   = 22;
+
+function horaStr(h) {
+  return `${String(h).padStart(2, "0")}:00`;
+}
+
+function toFechaISO(o) {
+  const d = new Date();
+  d.setDate(d.getDate() + o);
+  return d.toISOString().split("T")[0];
+}
 
 function SedeDetalle() {
   const { id }   = useParams();
@@ -20,6 +32,24 @@ function SedeDetalle() {
   const [offset,  setOffset]  = useState(0);
   const [expandidos, setExpandidos] = useState(new Set());
 
+  // Availability & ratings
+  const [disponibilidadMap, setDisponibilidadMap] = useState({});
+  const [ratingsMap,        setRatingsMap]        = useState({});
+  const [loadingGrupos,     setLoadingGrupos]     = useState(new Set());
+  const [refreshKey,        setRefreshKey]        = useState(0);
+
+  // Booking modal
+  const [modal,         setModal]         = useState(null);
+  const [iluminacion,   setIluminacion]   = useState(false);
+  const [bookingStatus, setBookingStatus] = useState(null);
+  const [bookingError,  setBookingError]  = useState("");
+
+  const usuario = (() => {
+    try { return JSON.parse(sessionStorage.getItem("usuario")); }
+    catch { return null; }
+  })();
+
+  // Load sede + canchas once
   useEffect(() => {
     Promise.all([
       apiFetch(`/sedes/${id}`),
@@ -28,16 +58,93 @@ function SedeDetalle() {
       .then(([sedeData, canchasData]) => {
         setSede(sedeData);
         setCanchas(canchasData);
-        const tipos = [...new Set(canchasData.map(c => c.tipo))];
-        setExpandidos(new Set(tipos));
+        setExpandidos(new Set([...new Set(canchasData.map(c => c.tipo))]));
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Fetch ratings once when canchas are loaded
+  useEffect(() => {
+    if (canchas.length === 0) return;
+    canchas.forEach(c => {
+      apiFetch(`/feedback/canchas/${c.id}/rating`)
+        .then(data => setRatingsMap(prev => ({ ...prev, [c.id]: data.rating })))
+        .catch(() => setRatingsMap(prev => ({ ...prev, [c.id]: 0 })));
+    });
+  }, [canchas]);
+
+  // Fetch availability when canchas loaded, date changes, or booking made
+  useEffect(() => {
+    if (canchas.length === 0) return;
+    const fechaStr = toFechaISO(offset);
+    const tipos = [...new Set(canchas.map(c => c.tipo))];
+
+    tipos.forEach(tipo => {
+      const canchasGrupo = canchas.filter(c => c.tipo === tipo);
+      setLoadingGrupos(prev => new Set([...prev, tipo]));
+
+      Promise.all(
+        canchasGrupo.map(c =>
+          apiFetch(`/reservas/disponibilidad?canchaId=${c.id}&fecha=${fechaStr}`)
+            .then(data => ({ canchaId: c.id, ocupados: data }))
+            .catch(() => ({ canchaId: c.id, ocupados: [] }))
+        )
+      )
+        .then(results => {
+          setDisponibilidadMap(prev => {
+            const next = { ...prev };
+            results.forEach(({ canchaId, ocupados }) => { next[canchaId] = ocupados; });
+            return next;
+          });
+        })
+        .finally(() => {
+          setLoadingGrupos(prev => {
+            const next = new Set(prev);
+            next.delete(tipo);
+            return next;
+          });
+        });
+    });
+  }, [canchas, offset, refreshKey]);
+
   const fecha = new Date();
   fecha.setDate(fecha.getDate() + offset);
   const fechaFormateada = `${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`;
+
+  function getSlotsDisponibles(canchasGrupo) {
+    const slots = [];
+    for (let h = HORA_APERTURA; h < HORA_CIERRE; h++) {
+      const ini = horaStr(h);
+      const fin = horaStr(h + 1);
+      const canchaLibre = canchasGrupo.find(c => {
+        const ocupados = disponibilidadMap[c.id] || [];
+        return !ocupados.some(r => {
+          const rIni = r.horaInicio ? r.horaInicio.substring(0, 5) : "";
+          return rIni === ini;
+        });
+      });
+      if (canchaLibre) {
+        slots.push({ ini, fin, canchaId: canchaLibre.id });
+      }
+    }
+    return slots;
+  }
+
+  function getBadge(horaInicio) {
+    const h = parseInt(horaInicio.split(":")[0], 10);
+    if (usuario?.acreditado && h >= 18) return "socio";
+    if (h >= 18 && h <= 20) return "popular";
+    return "normal";
+  }
+
+  function getGrupoRating(canchasGrupo) {
+    const ratings = canchasGrupo
+      .map(c => ratingsMap[c.id])
+      .filter(r => r != null && r > 0);
+    if (ratings.length === 0) return null;
+    return (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1);
+  }
 
   const gruposMap = canchas.reduce((acc, cancha) => {
     if (!acc[cancha.tipo]) acc[cancha.tipo] = [];
@@ -56,6 +163,41 @@ function SedeDetalle() {
       return next;
     });
   };
+
+  function closeModal() {
+    setModal(null);
+    setBookingStatus(null);
+    setBookingError("");
+    setIluminacion(false);
+  }
+
+  async function handleReservar() {
+    if (!modal || !usuario) return;
+    setBookingStatus("loading");
+    setBookingError("");
+    try {
+      await apiFetch("/reservas", {
+        method: "POST",
+        body: JSON.stringify({
+          usuarioId: usuario.id,
+          canchaId: modal.canchaId,
+          fecha: toFechaISO(offset),
+          horaInicio: modal.horaInicio + ":00",
+          horaFin: modal.horaFin + ":00",
+          iluminacion,
+          equipamiento: []
+        })
+      });
+      setBookingStatus("success");
+      setTimeout(() => {
+        closeModal();
+        setRefreshKey(k => k + 1);
+      }, 1500);
+    } catch (e) {
+      setBookingError(e.message);
+      setBookingStatus("error");
+    }
+  }
 
   return (
     <div className="sede-detalle-page">
@@ -108,40 +250,123 @@ function SedeDetalle() {
             )}
 
             <div className="canchas-list">
-              {grupos.map(([tipo, canchasGrupo]) => (
-                <div key={tipo} className="cancha-card">
-                  {expandidos.has(Number(tipo)) && (
-                    <div className="cancha-card__body">
-                      <div className="cancha-card__image"></div>
-                      <div className="cancha-card__info">
-                        <div className="cancha-card__title-row">
-                          <h3 className="cancha-card__nombre">Fútbol {tipo}</h3>
-                          <span className="cancha-card__precio">
-                            Desde ${canchasGrupo[0].precioBase.toLocaleString("es-AR")}
-                          </span>
+              {grupos.map(([tipo, canchasGrupo]) => {
+                const tipoNum   = Number(tipo);
+                const isLoading = loadingGrupos.has(tipoNum);
+                const slots     = getSlotsDisponibles(canchasGrupo);
+                const rating    = getGrupoRating(canchasGrupo);
+
+                return (
+                  <div key={tipo} className="cancha-card">
+                    {expandidos.has(tipoNum) && (
+                      <div className="cancha-card__body">
+                        <div className="cancha-card__image"></div>
+                        <div className="cancha-card__info">
+                          <div className="cancha-card__title-row">
+                            <h3 className="cancha-card__nombre">Fútbol {tipo}</h3>
+                            {rating && (
+                              <span className="cancha-card__rating">⭐ {rating}</span>
+                            )}
+                          </div>
+
+                          {isLoading ? (
+                            <p className="cancha-turnos-placeholder">Cargando turnos...</p>
+                          ) : slots.length === 0 ? (
+                            <p className="cancha-turnos-placeholder">No hay turnos disponibles para este día.</p>
+                          ) : (
+                            <div className="cancha-card__turnos">
+                              {slots.map(({ ini, fin, canchaId }) => {
+                                const badge = getBadge(ini);
+                                return (
+                                  <div key={ini} className="turno-row">
+                                    <span className="turno-hora">{ini}</span>
+                                    <span className={`turno-badge turno-badge--${badge}`}>
+                                      {badge === "normal"  && fin}
+                                      {badge === "popular" && "Turno Popular +5% de dto."}
+                                      {badge === "socio"   && "Descuento Socio -10%"}
+                                    </span>
+                                    <button
+                                      className="turno-reservar-btn"
+                                      onClick={() => setModal({ canchaId, tipo: tipoNum, horaInicio: ini, horaFin: fin })}
+                                    >
+                                      Reservar
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                        <p className="cancha-turnos-placeholder">
-                          📅 Seleccioná una fecha para ver los turnos disponibles.
-                        </p>
                       </div>
+                    )}
+                    <div
+                      className="cancha-card__footer"
+                      onClick={() => toggleExpandido(tipoNum)}
+                    >
+                      <div className="cancha-card__footer-left">
+                        <span>x{canchasGrupo.length} {canchasGrupo.length === 1 ? "Cancha" : "Canchas"}</span>
+                        <span>💲 Desde ${canchasGrupo[0].precioBase.toLocaleString("es-AR")}</span>
+                      </div>
+                      <span className="cancha-card__footer-tipo">Fútbol {tipo}</span>
+                      <span className="cancha-card__chevron">
+                        {expandidos.has(tipoNum) ? "▲" : "▼"}
+                      </span>
                     </div>
-                  )}
-                  <div
-                    className="cancha-card__footer"
-                    onClick={() => toggleExpandido(Number(tipo))}
-                  >
-                    <div className="cancha-card__footer-left">
-                      <span>x{canchasGrupo.length} {canchasGrupo.length === 1 ? "Cancha" : "Canchas"}</span>
-                    </div>
-                    <span className="cancha-card__footer-tipo">Fútbol {tipo}</span>
-                    <span className="cancha-card__chevron">
-                      {expandidos.has(Number(tipo)) ? "▲" : "▼"}
-                    </span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
+        )}
+
+        {/* Booking Modal */}
+        {modal && (
+          <div className="modal-overlay" onClick={() => { if (bookingStatus !== "loading") closeModal(); }}>
+            <div className="modal-box" onClick={e => e.stopPropagation()}>
+              {bookingStatus === "success" ? (
+                <div className="modal-success">
+                  <span className="modal-success__icon">✓</span>
+                  <p>¡Reserva confirmada!</p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="modal-title">Confirmar Reserva</h2>
+                  <div className="modal-info">
+                    <p><strong>Cancha:</strong> Fútbol {modal.tipo} — {sede?.nombre}</p>
+                    <p><strong>Fecha:</strong> {fechaFormateada}</p>
+                    <p><strong>Horario:</strong> {modal.horaInicio} - {modal.horaFin} hs</p>
+                  </div>
+                  <label className="modal-iluminacion">
+                    <input
+                      type="checkbox"
+                      checked={iluminacion}
+                      onChange={e => setIluminacion(e.target.checked)}
+                    />
+                    Iluminación (+$500)
+                  </label>
+                  {bookingStatus === "error" && (
+                    <p className="modal-error">{bookingError}</p>
+                  )}
+                  <div className="modal-actions">
+                    <button
+                      className="modal-btn modal-btn--cancel"
+                      onClick={closeModal}
+                      disabled={bookingStatus === "loading"}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      className="modal-btn modal-btn--confirm"
+                      onClick={handleReservar}
+                      disabled={bookingStatus === "loading"}
+                    >
+                      {bookingStatus === "loading" ? "Reservando..." : "Confirmar"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         )}
 
       </main>

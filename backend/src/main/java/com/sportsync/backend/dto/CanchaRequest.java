@@ -2,7 +2,7 @@ package com.sportsync.backend.dto;
 
 public class CanchaRequest {
     private String nombre;
-    private int tipo;        // 5, 7 u 11 (mega hardcodeado creo que seria mejor un enum)
+    private int tipo;
     private double precioBase;
 
     public CanchaRequest() {}

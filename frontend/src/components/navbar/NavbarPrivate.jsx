@@ -19,7 +19,7 @@ function NavbarPrivate() {
       <nav className="navbar__links">
         <Link to="/home">Inicio</Link>
         <Link to="/sedes">Sedes</Link>
-        <a href="#">Mis Reservas</a>
+        <Link to="/mis-reservas">Mis Reservas</Link>
         <Link to="/perfil">Perfil</Link>
         {usuario?.rol === "ADMIN" && (
             <Link to="/admin">Panel Admin</Link>

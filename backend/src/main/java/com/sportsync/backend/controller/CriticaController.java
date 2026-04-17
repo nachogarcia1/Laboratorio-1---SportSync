@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/feedback")
+@RequestMapping("/criticas")
 public class CriticaController {
 
     private final CriticaService service;
