@@ -18,7 +18,7 @@ function NavbarPrivate() {
       <Link to="/home" className="navbar__logo">SportSync</Link>
       <nav className="navbar__links">
         <Link to="/home">Inicio</Link>
-        <Link to="/reservas">Reservas</Link>
+        <Link to="/sedes">Sedes</Link>
         <a href="#">Mis Reservas</a>
         <Link to="/perfil">Perfil</Link>
         {usuario?.rol === "ADMIN" && (
