@@ -9,6 +9,8 @@ import Admin from "./pages/admin/Admin";
 import AdminRoute from "./routes/AdminRoute";
 import Sedes from "./pages/sedes/Sedes";
 import SedeDetalle from "./pages/sedes/SedeDetalle";
+import MisReservas from "./pages/reservas/MisReservas";
+import CalificarExperiencia from "./pages/calificar/CalificarExperiencia";
 
 function App() {
   return (
@@ -56,7 +58,19 @@ function App() {
             <SedeDetalle />
           </ProtectedRoute>
         } />
-        
+
+        <Route path="/mis-reservas" element={
+          <ProtectedRoute>
+            <MisReservas />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/calificar" element={
+          <ProtectedRoute>
+            <CalificarExperiencia />
+          </ProtectedRoute>
+        } />
+
       </Routes>
     </Router>
   );

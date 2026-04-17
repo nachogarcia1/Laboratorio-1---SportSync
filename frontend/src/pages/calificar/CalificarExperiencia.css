@@ -1,0 +1,208 @@
+.calificar-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.calificar__main {
+  flex: 1;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 24px 56px;
+}
+
+.calificar__title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #18263d;
+  text-align: center;
+  margin: 0 0 28px;
+}
+
+.calificar__card {
+  background: white;
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.calificar__subtitle {
+  text-align: center;
+  color: #4c5562;
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+/* ── Reserva info ── */
+.calificar__reserva-info h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #18263d;
+  margin: 0 0 12px;
+}
+
+.calificar__reserva-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 28px;
+}
+
+.calificar__reserva-img {
+  width: 72px;
+  min-width: 72px;
+  height: 54px;
+  border: 1px solid #ccc;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), #ccc, transparent calc(50% + 1px)),
+    linear-gradient(to bottom right, transparent calc(50% - 1px), #ccc, transparent calc(50% + 1px));
+  background-color: #f1f1f1;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.calificar__reserva-nombre {
+  font-size: 15px;
+  font-weight: 700;
+  color: #18263d;
+  margin: 0 0 4px;
+}
+
+.calificar__reserva-dato {
+  font-size: 13px;
+  color: #4c5562;
+  margin: 0;
+}
+
+/* ── Criterios ── */
+.calificar__criterio {
+  margin-bottom: 24px;
+}
+
+.calificar__criterio label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #18263d;
+  margin-bottom: 10px;
+}
+
+/* ── Stars ── */
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.star {
+  font-size: 32px;
+  color: #e0b800;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.15s, transform 0.1s;
+  user-select: none;
+}
+
+.star--filled {
+  opacity: 1;
+}
+
+.star:hover {
+  transform: scale(1.15);
+}
+
+/* ── Comentario ── */
+.calificar__comentario {
+  margin-bottom: 24px;
+}
+
+.calificar__comentario label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #18263d;
+  margin-bottom: 10px;
+}
+
+.calificar__comentario textarea {
+  width: 100%;
+  border: 1px solid var(--mid-gray);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #18263d;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.calificar__comentario textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+/* ── Submit ── */
+.calificar__submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.calificar__submit-btn:hover    { background: var(--blue-dark); }
+.calificar__submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Error ── */
+.calificar__error {
+  color: var(--danger);
+  font-size: 13px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.calificar__back-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 10px 24px;
+  background: #e9ecef;
+  color: #18263d;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── Success ── */
+.calificar__success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #28a745;
+}
+
+.calificar__success-icon {
+  font-size: 32px;
+  background: #d4edda;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
