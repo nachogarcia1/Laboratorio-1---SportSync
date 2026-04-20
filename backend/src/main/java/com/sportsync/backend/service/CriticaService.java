@@ -77,11 +77,18 @@ public class CriticaService {
         return criticaCanchaRepo.findByCanchaId(canchaId);
     }
 
+    public List<CriticaCancha> getCriticasByUsuario(Long usuarioId) {
+        return criticaCanchaRepo.findByUsuarioId(usuarioId);
+    }
+
+    public boolean yaCalificoReserva(Long reservaId) {
+        return criticaCanchaRepo.existsByReservaId(reservaId);
+    }
+
     public CriticaCancha criticarCancha(Long usuarioId, Long canchaId,
                                         Long reservaId, int nota, String comentario) {
         validarNota(nota);
 
-        // Verificar que la reserva existe y pertenece al usuario
         Reserva reserva = reservaRepo.findById(reservaId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Reserva no encontrada."));
 
@@ -89,11 +96,10 @@ public class CriticaService {
             throw new IllegalStateException("Solo podés criticar canchas que vos reservaste.");
         }
 
-        if (reserva.getEstado() != EstadoReserva.ACTIVA) {
-            throw new IllegalStateException("Solo podés criticar reservas activas.");
+        if (!reserva.getCancha().getId().equals(canchaId)) {
+            throw new IllegalStateException("La reserva no corresponde a esa cancha.");
         }
 
-        // Verificar que no haya crítica previa para esta reserva
         if (criticaCanchaRepo.existsByReservaId(reservaId)) {
             throw new IllegalStateException("Ya criticaste esta reserva.");
         }

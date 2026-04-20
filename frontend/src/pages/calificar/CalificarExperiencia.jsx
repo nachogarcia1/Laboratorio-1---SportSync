@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
@@ -41,17 +41,24 @@ function CalificarExperiencia() {
   const navigate  = useNavigate();
   const reserva   = state?.reserva;
 
-  const [notaCancha,     setNotaCancha]     = useState(0);
-  const [notaStaff,      setNotaStaff]      = useState(0);
-  const [notaServicios,  setNotaServicios]  = useState(0);
-  const [comentario,     setComentario]     = useState("");
-  const [status,         setStatus]         = useState(null);
-  const [errorMsg,       setErrorMsg]       = useState("");
+  const [notaCancha,    setNotaCancha]    = useState(0);
+  const [notaStaff,     setNotaStaff]     = useState(0);
+  const [notaServicios, setNotaServicios] = useState(0);
+  const [comentario,    setComentario]    = useState("");
+  const [status,        setStatus]        = useState(null); // null | "loading" | "success" | "error"
+  const [errorMsg,      setErrorMsg]      = useState("");
 
   const usuario = (() => {
     try { return JSON.parse(sessionStorage.getItem("usuario")); }
     catch { return null; }
   })();
+
+  useEffect(() => {
+    if (!reserva) return;
+    apiFetch(`/criticas/canchas/reservas/${reserva.id}`)
+      .then(data => { if (data.yaCalificada) setStatus("success"); })
+      .catch(() => {});
+  }, []);
 
   if (!reserva) {
     return (
@@ -79,13 +86,13 @@ function CalificarExperiencia() {
     setStatus("loading");
     setErrorMsg("");
     try {
-      await apiFetch("/feedback/canchas", {
+      await apiFetch("/criticas/canchas", {
         method: "POST",
         body: JSON.stringify({
-          usuarioId: usuario.id,
-          canchaId:  reserva.cancha?.id ?? reserva.canchaId,
-          reservaId: reserva.id,
-          nota:      notaPromedio,
+          usuarioId:  usuario.id,
+          canchaId:   reserva.cancha?.id ?? reserva.canchaId,
+          reservaId:  reserva.id,
+          nota:       notaPromedio,
           comentario: comentario.trim() || null
         })
       });
@@ -112,7 +119,6 @@ function CalificarExperiencia() {
         <div className="calificar__card">
           <p className="calificar__subtitle">Ayúdanos a mejorar tu experiencia en SportSync.</p>
 
-          {/* Reserva info */}
           <div className="calificar__reserva-info">
             <h3>Reserva Reciente</h3>
             <div className="calificar__reserva-card">
@@ -129,10 +135,7 @@ function CalificarExperiencia() {
             <div className="calificar__success">
               <span className="calificar__success-icon">✓</span>
               <p>¡Gracias por tu calificación!</p>
-              <button
-                className="calificar__submit-btn"
-                onClick={() => navigate("/mis-reservas")}
-              >
+              <button className="calificar__submit-btn" onClick={() => navigate("/mis-reservas")}>
                 Volver a Mis Reservas
               </button>
             </div>

@@ -4,6 +4,7 @@ import com.sportsync.backend.model.Usuario;
 import com.sportsync.backend.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.sportsync.backend.model.Membresia;
 
 import java.util.List;
 import java.util.Map;
@@ -20,23 +21,14 @@ public class UsuarioController {
         this.jwtUtil = jwtUtil;
     }
 
-    // ── UC-01: Registrarse ────────────────────────────────────────────────────
-    // POST /usuarios/register
-    // Body: { nombre, email, password, dni, telefono (opcional) }
-
     @PostMapping("/register")
     public ResponseEntity<?> registrar(@RequestBody Usuario usuario) {
         try {
-            Usuario creado = service.registrar(usuario);
-            return ResponseEntity.ok(creado);
+            return ResponseEntity.ok(service.registrar(usuario));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-
-    // ── UC-01: Login ──────────────────────────────────────────────────────────
-    // POST /usuarios/login
-    // Body: { email, password }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
@@ -55,9 +47,14 @@ public class UsuarioController {
         }
     }
 
-
-    // ── UC-03: Ver perfil ─────────────────────────────────────────────────────
-    // GET /usuarios/{id}
+    @GetMapping("/buscar")
+    public ResponseEntity<?> buscar(@RequestParam String email) {
+        try {
+            return ResponseEntity.ok(service.obtenerPorEmail(email));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> verPerfil(@PathVariable Long id) {
@@ -68,70 +65,67 @@ public class UsuarioController {
         }
     }
 
-    // ── UC-03: Editar perfil ──────────────────────────────────────────────────
-    // PUT /usuarios/{id}
-    // Body: { nombre (opcional), password (opcional) }
-
     @PutMapping("/{id}")
     public ResponseEntity<?> editarPerfil(@PathVariable Long id,
                                           @RequestBody Map<String, String> body) {
         try {
-            Usuario actualizado = service.editarPerfil(
-                    id,
-                    body.get("nombre"),
-                    body.get("email"),
-                    body.get("dni"),
-                    body.get("telefono"),
-                    body.get("password")
-            );
-            return ResponseEntity.ok(actualizado);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    // ── UC-03: Acreditarse como socio ─────────────────────────────────────────
-    // PUT /usuarios/{id}/acreditar
-
-    @PutMapping("/{id}/acreditar")
-    public ResponseEntity<?> acreditar(@PathVariable Long id) {
-        try {
-            Usuario actualizado = service.acreditarSocio(id);
-            return ResponseEntity.ok(Map.of(
-                    "mensaje", "Acreditación exitosa.",
-                    "rol",     actualizado.getRol()
+            return ResponseEntity.ok(service.editarPerfil(
+                    id, body.get("nombre"), body.get("email"),
+                    body.get("dni"), body.get("telefono"), body.get("password")
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    // ── Admin: listar todos los usuarios ─────────────────────────────────────
-    // GET /usuarios
+    @PutMapping("/{id}/acreditar")
+    public ResponseEntity<?> acreditar(@PathVariable Long id) {
+        try {
+            Membresia membresia = service.acreditarSocio(id);
+            Usuario usuario = service.obtenerPorId(id);
+            String nuevoToken = jwtUtil.generarToken(usuario.getEmail(), usuario.getRol().name());
+            return ResponseEntity.ok(Map.of(
+                    "mensaje",               "Acreditación exitosa.",
+                    "rol",                   usuario.getRol(),
+                    "token",                 nuevoToken,
+                    "fechaInicioSocio",      membresia.getFechaInicio().toString(),
+                    "fechaVencimientoSocio", membresia.getFechaVencimiento().toString()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @GetMapping
     public List<Usuario> listar() {
         return service.listar();
     }
 
-    // ── Admin: banear / desbanear usuario ─────────────────────────────────────
-    // PUT /usuarios/{id}/toggle-activo
-
-    @PutMapping("/{id}/toggle-activo")
-    public ResponseEntity<?> toggleActivo(@PathVariable Long id) {
+    @PutMapping("/{id}/suspender")
+    public ResponseEntity<?> suspender(@PathVariable Long id,
+                                       @RequestBody Map<String, Object> body) {
         try {
-            Usuario usuario = service.toggleActivo(id);
+            String tipo = (String) body.get("tipo");
+            Integer dias = body.get("dias") != null ? ((Number) body.get("dias")).intValue() : null;
+            Usuario usuario = service.suspender(id, tipo, dias);
             return ResponseEntity.ok(Map.of(
-                    "activo",  usuario.isActivo(),
-                    "mensaje", usuario.isActivo() ? "Usuario habilitado." : "Usuario baneado."
+                    "estado", usuario.getEstado(),
+                    "mensaje", "Usuario suspendido correctamente."
             ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/rehabilitar")
+    public ResponseEntity<?> rehabilitar(@PathVariable Long id) {
+        try {
+            service.rehabilitar(id);
+            return ResponseEntity.ok(Map.of("mensaje", "Usuario rehabilitado."));
         } catch (Exception e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         }
     }
-
-    // ── Admin: eliminar usuario ───────────────────────────────────────────────
-    // DELETE /usuarios/{id}
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminar(@PathVariable Long id) {
@@ -140,6 +134,21 @@ public class UsuarioController {
             return ResponseEntity.ok(Map.of("mensaje", "Usuario eliminado."));
         } catch (Exception e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/cancelar-socio")
+    public ResponseEntity<?> cancelarSocio(@PathVariable Long id) {
+        try {
+            Usuario actualizado = service.cancelarSocio(id);
+            String nuevoToken = jwtUtil.generarToken(actualizado.getEmail(), actualizado.getRol().name());
+            return ResponseEntity.ok(Map.of(
+                    "mensaje", "Membresía cancelada.",
+                    "rol",     actualizado.getRol(),
+                    "token",   nuevoToken
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

@@ -385,3 +385,175 @@
   outline: none;
   border-color: transparent;
 }
+
+.admin-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.admin-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-lista__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.admin-lista__info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-lista__nombre {
+  font-weight: 600;
+}
+
+.admin-lista__subtipo {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.admin-lista__badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.badge--activa {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge--inactiva {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.admin-lista__menu {
+  position: relative;
+}
+
+.admin-lista__menu-btn {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.admin-lista__menu-btn:hover {
+  background: #e9ecef;
+}
+
+.admin-dropdown {
+  position: absolute;
+  right: 0;
+  top: 110%;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  min-width: 150px;
+  overflow: hidden;
+}
+
+.admin-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.admin-dropdown button:hover {
+  background: #f0f0f0;
+}
+
+.admin-dropdown__danger {
+  color: #dc3545;
+}
+
+.admin-dropdown__danger:hover {
+  background: #fff0f0 !important;
+}
+
+.admin-sede-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.admin-sede-selector select {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.admin-empty {
+  color: #888;
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+.admin-filtros {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-filtro-btn {
+  padding: 0.4rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.admin-filtro-btn:hover {
+  background: #f0f0f0;
+}
+
+.admin-filtro-btn--active {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}
+
+.badge--temporal {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.usuario-confirmacion {
+  background: #f0f4ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+}
+
+.usuario-confirmacion p {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+}

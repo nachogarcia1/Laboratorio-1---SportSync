@@ -28,13 +28,15 @@ function isPast(fechaStr) {
 function MisReservas() {
   const navigate = useNavigate();
 
-  const [reservas,        setReservas]        = useState([]);
-  const [loading,         setLoading]         = useState(true);
-  const [error,           setError]           = useState("");
-  const [cancelando,      setCancelando]      = useState(null);
-  const [cancelError,     setCancelError]     = useState("");
-  const [detalleModal,    setDetalleModal]    = useState(null);
-  const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [reservas,             setReservas]             = useState([]);
+  const [loading,              setLoading]              = useState(true);
+  const [error,                setError]                = useState("");
+  const [cancelando,           setCancelando]           = useState(null);
+  const [cancelError,          setCancelError]          = useState("");
+  const [detalleModal,         setDetalleModal]         = useState(null);
+  const [mostrarHistorial,     setMostrarHistorial]     = useState(false);
+  const [reservasCalificadas,  setReservasCalificadas]  = useState(new Set());
+  const [modalCancelarReserva, setModalCancelarReserva] = useState(null);
 
   const usuario = (() => {
     try { return JSON.parse(sessionStorage.getItem("usuario")); }
@@ -44,7 +46,13 @@ function MisReservas() {
   useEffect(() => {
     if (!usuario?.id) return;
     apiFetch(`/reservas/usuario/${usuario.id}`)
-      .then(data => setReservas(data))
+      .then(data => {
+        setReservas(data);
+        return apiFetch(`/criticas/canchas/usuario/${usuario.id}`);
+      })
+      .then(criticas => {
+        setReservasCalificadas(new Set(criticas.map(c => c.reservaId)));
+      })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -54,9 +62,9 @@ function MisReservas() {
   const completadas = historial.filter(r => isPast(r.fecha)).length;
 
   async function handleCancelar(reservaId) {
-    if (!window.confirm("¿Estás seguro que querés cancelar esta reserva?")) return;
     setCancelando(reservaId);
     setCancelError("");
+    setModalCancelarReserva(null);
     try {
       await apiFetch(`/reservas/${reservaId}/cancelar`, {
         method: "PUT",
@@ -120,8 +128,8 @@ function MisReservas() {
             )}
 
             {listaVisible.map(reserva => {
-              const status  = getStatus(reserva);
-              const pasada  = isPast(reserva.fecha);
+              const status = getStatus(reserva);
+              const pasada = isPast(reserva.fecha);
               return (
                 <div key={reserva.id} className={`reserva-card ${pasada ? "reserva-card--pasada" : ""}`}>
                   <div className="reserva-card__img"></div>
@@ -145,11 +153,23 @@ function MisReservas() {
                     {reserva.estado === "ACTIVA" && !pasada && (
                       <button
                         className="reserva-btn reserva-btn--cancelar"
-                        onClick={() => handleCancelar(reserva.id)}
+                        onClick={() => setModalCancelarReserva(reserva.id)}
                         disabled={cancelando === reserva.id}
                       >
                         {cancelando === reserva.id ? "Cancelando..." : "Cancelar"}
                       </button>
+                    )}
+                    {pasada && reserva.estado === "ACTIVA" && (
+                      reservasCalificadas.has(reserva.id) ? (
+                        <button className="reserva-btn" disabled style={{ opacity: 0.6 }}>✓ Calificado</button>
+                      ) : (
+                        <button
+                          className="reserva-btn reserva-btn--detalle"
+                          onClick={() => navigate("/calificar", { state: { reserva } })}
+                        >
+                          ★ Calificar
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
@@ -226,6 +246,30 @@ function MisReservas() {
               )}
               <button className="modal-btn modal-btn--cancel" onClick={() => setDetalleModal(null)}>
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Cancelar Reserva */}
+      {modalCancelarReserva && (
+        <div className="modal-overlay" onClick={() => setModalCancelarReserva(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <h2 className="modal-title">Cancelar Reserva</h2>
+            <div className="modal-info">
+              <p>¿Estás seguro que querés cancelar esta reserva?</p>
+            </div>
+            <div className="modal-actions">
+              <button className="modal-btn modal-btn--cancel" onClick={() => setModalCancelarReserva(null)}>
+                Volver
+              </button>
+              <button
+                className="modal-btn modal-btn--confirm"
+                style={{ background: "#ef4444" }}
+                onClick={() => handleCancelar(modalCancelarReserva)}
+              >
+                Sí, cancelar
               </button>
             </div>
           </div>

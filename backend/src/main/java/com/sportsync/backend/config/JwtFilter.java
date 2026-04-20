@@ -11,6 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import com.sportsync.backend.model.EstadoUsuario;
 
 import java.io.IOException;
 import java.util.List;
@@ -55,7 +56,7 @@ public class JwtFilter extends OncePerRequestFilter {
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
 
-            if (usuario != null && usuario.isActivo()) {
+            if (usuario != null && (usuario.getEstado() == null || usuario.getEstado() == EstadoUsuario.ACTIVO)) {
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
                                 email,

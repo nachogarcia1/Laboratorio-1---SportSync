@@ -28,14 +28,24 @@ public class Security {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Públicos: login y register
+                        /*todos*/
                         .requestMatchers("/usuarios/login", "/usuarios/register").permitAll()
-                        // Públicos: consultas generales
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/sedes/**", "/canchas/**", "/equipamiento", "/reservas/disponibilidad"
                         ).permitAll()
-                        // Solo ADMIN
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/criticas/**"
+                        ).permitAll()
+
+                        /*autenticados*/
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.PUT,
+                                "/usuarios/*/acreditar", "/usuarios/*/cancelar-socio"
+                        ).authenticated()
+
+                        /*ADMIN*/
                         .requestMatchers("/sedes/admin/**").hasRole("ADMIN")
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.POST,
@@ -46,8 +56,21 @@ public class Security {
                                 "/sedes/**", "/canchas/**", "/equipamiento/**"
                         ).hasRole("ADMIN")
                         .requestMatchers("/usuarios").hasRole("ADMIN")
-                        .requestMatchers("/usuarios/{id}/toggle-activo").hasRole("ADMIN")
-                        // lo demas tiene que estar autenticado
+                        .requestMatchers("/usuarios/buscar").hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.PUT,
+                                "/usuarios/*/suspender", "/usuarios/*/rehabilitar"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.DELETE,
+                                "/usuarios/*"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.POST,
+                                "/criticas/usuarios"
+                        ).hasRole("ADMIN")
+
+                        /*cualquier otra autenticados*/
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

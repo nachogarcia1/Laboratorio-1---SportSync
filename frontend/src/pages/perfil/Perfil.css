@@ -375,3 +375,49 @@
 .modal-btn-save:hover {
   background: var(--blue-dark);
 }
+
+.perfil-socio__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.perfil-socio__info-btn {
+  background: #e8f0fe;
+  color: #1a73e8;
+  border: 1px solid #c5d8fb;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.perfil-socio__btn--info {
+  margin-top: 0.5rem;
+  background: #e8f0fe;
+  color: #1a73e8;
+  border: 1px solid #c5d8fb;
+  border-radius: 20px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.perfil-socio__btn--cancelar {
+  margin-top: 0.4rem;
+  background: none;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  border-radius: 20px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  width: 100%;
+}
+
+.perfil-socio__btn--cancelar:hover {
+  background: #fff0f0;
+}

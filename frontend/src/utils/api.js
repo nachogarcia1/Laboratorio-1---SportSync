@@ -17,10 +17,11 @@ export async function apiFetch(endpoint, options = {}) {
     }
   });
 
-  const data = await response.json();
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
 
   if (!response.ok) {
-    throw new Error(data.error || "Error en la solicitud");
+    throw new Error(data.error || `Error ${response.status}`);
   }
 
   return data;
