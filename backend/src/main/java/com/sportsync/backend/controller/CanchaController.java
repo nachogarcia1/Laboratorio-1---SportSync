@@ -49,6 +49,12 @@ public class CanchaController {
         }
     }
 
+    // GET /canchas/admin/sede/{sedeId}
+    @GetMapping("/admin/sede/{sedeId}")
+    public List<Cancha> listarTodasPorSede(@PathVariable Long sedeId) {
+        return service.listarPorSede(sedeId);
+    }
+
     // ── UC-11 Admin: crear cancha en una sede ─────────────────────────────────
     // POST /canchas/sede/{sedeId}
     // Body: { nombre, tipo, precioBase }

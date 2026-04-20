@@ -215,3 +215,78 @@
   font-size: 15px;
   padding: 40px 0;
 }
+
+.home-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.home-banner--promo {
+  background: #1a73e8;
+  color: white;
+}
+
+.home-banner--socio {
+  background: #1e7e34;
+  color: white;
+}
+
+.home-banner__left {
+  flex: 1;
+}
+
+.home-banner__texto {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.home-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.home-banner__button {
+  background: white;
+  color: #1a73e8;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.home-banner__button--outline {
+  background: transparent;
+  color: white;
+  border: 2px solid white;
+}
+
+.home-banner__button--outline:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.home-banner__info-btn {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-banner__info-btn:hover {
+  background: rgba(255,255,255,0.35);
+}

@@ -38,7 +38,7 @@ public class SedeService {
     // ── Crear ─────────────────────────────────────────────────────────────────
 
     public Sede crear(Sede sede) {
-        sede.setActiva(true);
+        sede.setActiva(false);
         return repo.save(sede);
     }
 

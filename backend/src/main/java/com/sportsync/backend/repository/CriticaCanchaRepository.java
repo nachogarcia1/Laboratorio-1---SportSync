@@ -11,7 +11,11 @@ public interface CriticaCanchaRepository extends JpaRepository<CriticaCancha, Lo
 
     List<CriticaCancha> findByCanchaId(Long canchaId);
 
-    boolean existsByReservaId(Long reservaId);
+    @Query("SELECT c FROM CriticaCancha c WHERE c.usuario.id = :usuarioId")
+    List<CriticaCancha> findByUsuarioId(@Param("usuarioId") Long usuarioId);
+
+    @Query("SELECT COUNT(c) > 0 FROM CriticaCancha c WHERE c.reserva.id = :reservaId")
+    boolean existsByReservaId(@Param("reservaId") Long reservaId);
 
     @Query("SELECT AVG(c.nota) FROM CriticaCancha c WHERE c.cancha.id = :canchaId")
     Double calcularRatingCancha(@Param("canchaId") Long canchaId);

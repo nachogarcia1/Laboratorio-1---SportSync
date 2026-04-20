@@ -29,30 +29,29 @@ public class Usuario {
     @Column(nullable = false)
     private Rol rol = Rol.NO_SOCIO;
 
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "VARCHAR(30) DEFAULT 'ACTIVO'")
+    private EstadoUsuario estado = EstadoUsuario.ACTIVO;
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT true")
     private boolean activo = true;
 
-    // Constructor vacío (obligatorio para JPA)
     public Usuario() {}
 
-    // Getters
-    public Long getId()         { return id; }
-    public String getNombre()   { return nombre; }
-    public String getEmail()    { return email; }
-    public String getPassword() { return password; }
-    public String getDni()      { return dni; }
-    public String getTelefono() { return telefono; }
-    public Rol getRol()         { return rol; }
-    public boolean isActivo()   { return activo; }
+    public Long getId()           { return id; }
+    public String getNombre()     { return nombre; }
+    public String getEmail()      { return email; }
+    public String getPassword()   { return password; }
+    public String getDni()        { return dni; }
+    public String getTelefono()   { return telefono; }
+    public Rol getRol()           { return rol; }
+    public EstadoUsuario getEstado() { return estado; }
 
-    // Setters
-    public void setNombre(String nombre)     { this.nombre = nombre; }
-    public void setEmail(String email)       { this.email = email; }
-    public void setPassword(String password) { this.password = password; }
-    public void setDni(String dni) { this.dni = dni; }
-
-    public void setTelefono(String telefono) { this.telefono = telefono; }
-    public void setRol(Rol rol)              { this.rol = rol; }
-    public void setActivo(boolean activo)    { this.activo = activo; }
-
+    public void setNombre(String nombre)          { this.nombre = nombre; }
+    public void setEmail(String email)            { this.email = email; }
+    public void setPassword(String password)      { this.password = password; }
+    public void setDni(String dni)                { this.dni = dni; }
+    public void setTelefono(String telefono)      { this.telefono = telefono; }
+    public void setRol(Rol rol)                   { this.rol = rol; }
+    public void setEstado(EstadoUsuario estado)   { this.estado = estado; }
 }

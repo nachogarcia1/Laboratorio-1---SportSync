@@ -1,5 +1,6 @@
 package com.sportsync.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -20,7 +21,7 @@ public class CriticaUsuario {
     private Usuario usuario;
 
     @Column(nullable = false)
-    private int nota; // 1 a 5
+    private int nota;
 
     @Column
     private String comentario;
@@ -30,12 +31,16 @@ public class CriticaUsuario {
 
     public CriticaUsuario() {}
 
-    public Long getId()              { return id; }
-    public Usuario getAdmin()        { return admin; }
-    public Usuario getUsuario()      { return usuario; }
-    public int getNota()             { return nota; }
-    public String getComentario()    { return comentario; }
-    public LocalDateTime getFecha()  { return fecha; }
+    public Long getId()             { return id; }
+    @JsonIgnore
+    public Usuario getAdmin()       { return admin; }
+    @JsonIgnore
+    public Usuario getUsuario()     { return usuario; }
+    public Long getAdminId()        { return admin != null ? admin.getId() : null; }
+    public Long getUsuarioId()      { return usuario != null ? usuario.getId() : null; }
+    public int getNota()            { return nota; }
+    public String getComentario()   { return comentario; }
+    public LocalDateTime getFecha() { return fecha; }
 
     public void setAdmin(Usuario admin)          { this.admin = admin; }
     public void setUsuario(Usuario usuario)      { this.usuario = usuario; }

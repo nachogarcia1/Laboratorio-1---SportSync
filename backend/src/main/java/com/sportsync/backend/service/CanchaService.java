@@ -60,7 +60,7 @@ public class CanchaService {
 
         Sede sede = sedeService.obtenerPorId(sedeId);
         cancha.setSede(sede);
-        cancha.setEstado(EstadoCancha.HABILITADA);
+        cancha.setEstado(EstadoCancha.NO_HABILITADA);
 
         return repo.save(cancha);
     }
