@@ -25,7 +25,7 @@ function Admin() {
   const [suspenderAbierto, setSuspender]  = useState(false);
   const [modalSede,        setModalSede]        = useState(false);
   const [modalCancha,      setModalCancha]       = useState(false);
-  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horarios: "", error: "" });
+  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", error: "" });
   const [formCancha,       setFormCancha]        = useState({ sedeId: "", nombre: "", tipo: "5", precioBase: "", error: "" });
   const [sedesDisponibles, setSedesDisponibles]  = useState([]);
   const [sedes,            setSedes]             = useState([]);
@@ -49,6 +49,8 @@ function Admin() {
   const [envioMsg,         setEnvioMsg]          = useState("");
   const [envioError,       setEnvioError]        = useState("");
   const [modalCalificarUser, setModalCalificarUser] = useState(null);
+  const [ratingsUsuario,     setRatingsUsuario]     = useState([]);
+  const [loadingRatings,     setLoadingRatings]     = useState(false);
 
   // Modal genérico de confirmación
   const [modalConfirmar, setModalConfirmar] = useState(null);
@@ -76,13 +78,14 @@ function Admin() {
       await apiFetch("/sedes", {
         method: "POST",
         body: JSON.stringify({
-          nombre: "Sede " + formSede.nombre,
-          direccion: formSede.direccion,
-          horarios:  formSede.horarios
+          nombre:       "Sede " + formSede.nombre,
+          direccion:    formSede.direccion,
+          horaApertura: formSede.horaApertura,
+          horaCierre:   formSede.horaCierre
         })
       });
       setModalSede(false);
-      setFormSede({ nombre: "", direccion: "", horarios: "", error: "" });
+      setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", error: "" });
     } catch (err) {
       setFormSede(f => ({ ...f, error: err.message }));
     }
@@ -320,13 +323,19 @@ function Admin() {
     e.preventDefault();
     setBusquedaError("");
     setUsuarioTarget(null);
+    setRatingsUsuario([]);
     setEnvioMsg("");
     setEnvioError("");
     try {
       const data = await apiFetch(`/usuarios/buscar?email=${encodeURIComponent(emailCalificar)}`);
       setUsuarioTarget(data);
+      setLoadingRatings(true);
+      const ratings = await apiFetch(`/criticas/usuarios/${data.id}`);
+      setRatingsUsuario(ratings);
     } catch (err) {
       setBusquedaError(err.message);
+    } finally {
+      setLoadingRatings(false);
     }
   };
 
@@ -634,6 +643,44 @@ function Admin() {
                   </form>
                 )}
                 {envioMsg && <p style={{ color: "#22c55e", marginTop: "1rem", fontWeight: 600 }}>{envioMsg}</p>}
+
+                {usuarioTarget && (
+                  <div style={{ marginTop: "2rem" }}>
+                    <h3 style={{ marginBottom: "0.75rem" }}>
+                      Historial de ratings de <strong>{usuarioTarget.nombre}</strong>
+                    </h3>
+                    {loadingRatings ? (
+                      <p style={{ color: "#6b7280" }}>Cargando...</p>
+                    ) : ratingsUsuario.length === 0 ? (
+                      <p style={{ color: "#6b7280" }}>Este usuario no tiene ratings aún.</p>
+                    ) : (
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                        <thead>
+                          <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
+                            <th style={{ padding: "0.5rem 0.75rem" }}>Nota</th>
+                            <th style={{ padding: "0.5rem 0.75rem" }}>Comentario</th>
+                            <th style={{ padding: "0.5rem 0.75rem" }}>Fecha</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ratingsUsuario.map(r => (
+                            <tr key={r.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                              <td style={{ padding: "0.5rem 0.75rem" }}>
+                                {"★".repeat(r.nota)}{"☆".repeat(5 - r.nota)}
+                              </td>
+                              <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
+                                {r.comentario || "—"}
+                              </td>
+                              <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
+                                {r.fecha ? new Date(r.fecha).toLocaleDateString("es-AR") : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
               </section>
             )}
 
@@ -663,9 +710,12 @@ function Admin() {
               <label>Dirección</label>
               <input type="text" placeholder="Ej: Av. Santa Fe 1234" value={formSede.direccion} maxLength={150} required
                 onChange={e => setFormSede({ ...formSede, direccion: e.target.value })} />
-              <label>Horarios</label>
-              <input type="text" placeholder="Ej: Lunes a Domingo 8:00 - 22:00" value={formSede.horarios} maxLength={100} required
-                onChange={e => setFormSede({ ...formSede, horarios: e.target.value })} />
+              <label>Hora de apertura</label>
+              <input type="time" value={formSede.horaApertura} required
+                onChange={e => setFormSede({ ...formSede, horaApertura: e.target.value })} />
+              <label>Hora de cierre</label>
+              <input type="time" value={formSede.horaCierre} required
+                onChange={e => setFormSede({ ...formSede, horaCierre: e.target.value })} />
               {formSede.error && <p className="form__error">{formSede.error}</p>}
               <div className="modal-actions">
                 <button type="button" className="modal-btn-cancel" onClick={() => setModalSede(false)}>Cancelar</button>

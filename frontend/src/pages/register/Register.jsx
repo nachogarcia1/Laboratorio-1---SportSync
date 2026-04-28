@@ -19,14 +19,18 @@ function Register() {
     e.preventDefault();
     setError("");
 
-    if (form.nombre.trim().length < 2) {
-      setError("El nombre debe tener al menos 2 caracteres"); return;
+    if (form.nombre.trim().length < 6) {
+      setError("El nombre de usuario debe tener al menos 6 caracteres"); return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setError("Ingresá un correo electrónico válido"); return;
     }
     if (form.dni.length < 7) {
       setError("El DNI debe tener al menos 7 dígitos"); return;
     }
-    if (form.telefono && form.telefono.length < 7) {
-      setError("El teléfono debe tener al menos 7 dígitos"); return;
+    if (form.telefono && form.telefono.length < 8 ) {
+      setError("El teléfono debe tener 8 dígitos"); return;
     }
     if (form.password !== form.confirmarPassword) {
       setError("Las contraseñas no coinciden"); return;
@@ -81,9 +85,9 @@ function Register() {
             </div>
           ) : (
             <form className="register-form" onSubmit={handleRegister}>
-              <label>Nombre Completo</label>
+              <label>Nombre de usuario</label>
               <input
-                type="text" placeholder="Tu Nombre Apellido"
+                type="text" placeholder="Tu usuario"
                 value={form.nombre} maxLength={100} required
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
@@ -119,7 +123,7 @@ function Register() {
               <label>Teléfono</label>
               <input
                 type="text" placeholder="Ingresa tu teléfono"
-                value={form.telefono} maxLength={20}
+                value={form.telefono} maxLength={8}
                 onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/\D/g, "") })}
               />
 

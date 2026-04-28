@@ -1,4 +1,4 @@
-package com.sportsync.backend.model;
+package com.sportsync.backend.model.entidades;
 
 public enum Rol {
     ADMIN,

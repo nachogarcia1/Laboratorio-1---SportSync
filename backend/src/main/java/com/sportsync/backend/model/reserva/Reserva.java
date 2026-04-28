@@ -1,5 +1,8 @@
-package com.sportsync.backend.model;
+package com.sportsync.backend.model.reserva;
 
+import com.sportsync.backend.model.admin.EstadoReserva;
+import com.sportsync.backend.model.cancha.Cancha;
+import com.sportsync.backend.model.entidades.Usuario;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalTime;

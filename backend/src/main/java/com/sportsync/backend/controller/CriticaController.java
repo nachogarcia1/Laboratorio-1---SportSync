@@ -1,7 +1,8 @@
 package com.sportsync.backend.controller;
 
-import com.sportsync.backend.model.CriticaCancha;
-import com.sportsync.backend.model.CriticaUsuario;
+import com.sportsync.backend.dto.CriticaCanchaResponse;
+import com.sportsync.backend.model.critica.CriticaCancha;
+import com.sportsync.backend.model.critica.CriticaUsuario;
 import com.sportsync.backend.service.CriticaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,7 +58,7 @@ public class CriticaController {
     }
 
     @GetMapping("/canchas/usuario/{usuarioId}")
-    public List<CriticaCancha> criticasPorUsuario(@PathVariable Long usuarioId) {
+    public List<CriticaCanchaResponse> criticasPorUsuario(@PathVariable Long usuarioId) {
         return service.getCriticasByUsuario(usuarioId);
     }
 
@@ -77,10 +78,13 @@ public class CriticaController {
             Long usuarioId    = ((Number) body.get("usuarioId")).longValue();
             Long canchaId     = ((Number) body.get("canchaId")).longValue();
             Long reservaId    = ((Number) body.get("reservaId")).longValue();
-            int nota          = ((Number) body.get("nota")).intValue();
+            int notaCancha    = ((Number) body.get("notaCancha")).intValue();
+            int notaStaff     = ((Number) body.get("notaStaff")).intValue();
+            int notaServicios = ((Number) body.get("notaServicios")).intValue();
             String comentario = (String) body.get("comentario");
             return ResponseEntity.ok(
-                    service.criticarCancha(usuarioId, canchaId, reservaId, nota, comentario));
+                    service.criticarCancha(usuarioId, canchaId, reservaId,
+                            notaCancha, notaStaff, notaServicios, comentario));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

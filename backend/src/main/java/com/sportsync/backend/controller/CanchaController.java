@@ -1,7 +1,7 @@
 package com.sportsync.backend.controller;
 
-import com.sportsync.backend.model.Cancha;
-import com.sportsync.backend.model.EstadoCancha;
+import com.sportsync.backend.model.cancha.Cancha;
+import com.sportsync.backend.model.admin.EstadoCancha;
 import com.sportsync.backend.service.CanchaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

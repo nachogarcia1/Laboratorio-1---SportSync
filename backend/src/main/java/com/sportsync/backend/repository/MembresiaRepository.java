@@ -1,7 +1,7 @@
 package com.sportsync.backend.repository;
 
-import com.sportsync.backend.model.EstadoMembresia;
-import com.sportsync.backend.model.Membresia;
+import com.sportsync.backend.model.admin.EstadoMembresia;
+import com.sportsync.backend.model.admin.Membresia;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

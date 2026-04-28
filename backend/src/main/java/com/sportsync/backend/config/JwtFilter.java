@@ -1,6 +1,6 @@
 package com.sportsync.backend.config;
 
-import com.sportsync.backend.model.Usuario;
+import com.sportsync.backend.model.entidades.Usuario;
 import com.sportsync.backend.repository.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -11,7 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import com.sportsync.backend.model.EstadoUsuario;
+import com.sportsync.backend.model.admin.EstadoUsuario;
 
 import java.io.IOException;
 import java.util.List;

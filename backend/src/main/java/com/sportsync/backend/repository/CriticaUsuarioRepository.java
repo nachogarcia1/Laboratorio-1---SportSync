@@ -1,6 +1,6 @@
 package com.sportsync.backend.repository;
 
-import com.sportsync.backend.model.CriticaUsuario;
+import com.sportsync.backend.model.critica.CriticaUsuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

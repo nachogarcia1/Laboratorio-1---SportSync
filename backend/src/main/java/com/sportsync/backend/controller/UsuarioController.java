@@ -1,10 +1,10 @@
 package com.sportsync.backend.controller;
 
-import com.sportsync.backend.model.Usuario;
+import com.sportsync.backend.model.entidades.Usuario;
 import com.sportsync.backend.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.sportsync.backend.model.Membresia;
+import com.sportsync.backend.model.admin.Membresia;
 
 import java.util.List;
 import java.util.Map;

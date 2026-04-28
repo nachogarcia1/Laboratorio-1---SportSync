@@ -1,6 +1,6 @@
 package com.sportsync.backend.repository;
 
-import com.sportsync.backend.model.ItemEquipamiento;
+import com.sportsync.backend.model.cancha.ItemEquipamiento;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 

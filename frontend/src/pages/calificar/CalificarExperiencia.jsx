@@ -75,7 +75,6 @@ function CalificarExperiencia() {
     );
   }
 
-  const notaPromedio = Math.round((notaCancha + notaStaff + notaServicios) / 3) || 0;
 
   async function handleEnviar(e) {
     e.preventDefault();
@@ -89,11 +88,13 @@ function CalificarExperiencia() {
       await apiFetch("/criticas/canchas", {
         method: "POST",
         body: JSON.stringify({
-          usuarioId:  usuario.id,
-          canchaId:   reserva.cancha?.id ?? reserva.canchaId,
-          reservaId:  reserva.id,
-          nota:       notaPromedio,
-          comentario: comentario.trim() || null
+          usuarioId:    usuario.id,
+          canchaId:     reserva.cancha?.id ?? reserva.canchaId,
+          reservaId:    reserva.id,
+          notaCancha,
+          notaStaff,
+          notaServicios,
+          comentario:   comentario.trim() || null
         })
       });
       setStatus("success");

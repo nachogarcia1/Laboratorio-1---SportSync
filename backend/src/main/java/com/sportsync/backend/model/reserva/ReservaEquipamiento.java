@@ -1,5 +1,6 @@
-package com.sportsync.backend.model;
+package com.sportsync.backend.model.reserva;
 
+import com.sportsync.backend.model.cancha.ItemEquipamiento;
 import jakarta.persistence.*;
 
 @Entity

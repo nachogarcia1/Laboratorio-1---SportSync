@@ -2,7 +2,13 @@ package com.sportsync.backend.service;
 
 import com.sportsync.backend.dto.CrearReservaRequest;
 import com.sportsync.backend.exception.UsuarioNoEncontradoException;
-import com.sportsync.backend.model.*;
+import com.sportsync.backend.model.admin.EstadoCancha;
+import com.sportsync.backend.model.admin.EstadoReserva;
+import com.sportsync.backend.model.cancha.ItemEquipamiento;
+import com.sportsync.backend.model.cancha.Cancha;
+import com.sportsync.backend.model.entidades.Usuario;
+import com.sportsync.backend.model.reserva.Reserva;
+import com.sportsync.backend.model.reserva.ReservaEquipamiento;
 import com.sportsync.backend.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

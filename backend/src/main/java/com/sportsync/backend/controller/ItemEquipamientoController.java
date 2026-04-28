@@ -1,6 +1,6 @@
 package com.sportsync.backend.controller;
 
-import com.sportsync.backend.model.ItemEquipamiento;
+import com.sportsync.backend.model.cancha.ItemEquipamiento;
 import com.sportsync.backend.service.ItemEquipamientoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
