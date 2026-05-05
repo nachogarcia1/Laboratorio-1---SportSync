@@ -7,8 +7,7 @@ import "./SedeDetalle.css";
 
 const DIAS  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const HORA_APERTURA = 8;
-const HORA_CIERRE   = 22;
+
 
 function horaStr(h) {
   return `${String(h).padStart(2, "0")}:00`;
@@ -17,7 +16,10 @@ function horaStr(h) {
 function toFechaISO(o) {
   const d = new Date();
   d.setDate(d.getDate() + o);
-  return d.toISOString().split("T")[0];
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, "0");
+  const dd   = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function SedeDetalle() {
@@ -48,6 +50,7 @@ function SedeDetalle() {
     try { return JSON.parse(sessionStorage.getItem("usuario")); }
     catch { return null; }
   })();
+
 
   // Load sede + canchas once
   useEffect(() => {
@@ -113,6 +116,8 @@ function SedeDetalle() {
   const fechaFormateada = `${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`;
 
   function getSlotsDisponibles(canchasGrupo) {
+    const HORA_APERTURA = parseInt(sede?.horaApertura) || 8;
+    const HORA_CIERRE   = parseInt(sede?.horaCierre)   || 22;
     const slots = [];
     for (let h = HORA_APERTURA; h < HORA_CIERRE; h++) {
       const ini = horaStr(h);

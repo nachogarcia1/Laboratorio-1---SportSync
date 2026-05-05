@@ -1,7 +1,7 @@
 package com.sportsync.backend.controller;
 
 import com.sportsync.backend.dto.CrearReservaRequest;
-import com.sportsync.backend.model.Reserva;
+import com.sportsync.backend.model.reserva.Reserva;
 import com.sportsync.backend.service.ReservaService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;

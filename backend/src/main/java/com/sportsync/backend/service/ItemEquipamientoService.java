@@ -1,7 +1,7 @@
 package com.sportsync.backend.service;
 
 import com.sportsync.backend.exception.UsuarioNoEncontradoException;
-import com.sportsync.backend.model.ItemEquipamiento;
+import com.sportsync.backend.model.cancha.ItemEquipamiento;
 import com.sportsync.backend.repository.ItemEquipamientoRepository;
 import org.springframework.stereotype.Service;
 

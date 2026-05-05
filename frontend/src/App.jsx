@@ -11,6 +11,7 @@ import Sedes from "./pages/sedes/Sedes";
 import SedeDetalle from "./pages/sedes/SedeDetalle";
 import MisReservas from "./pages/reservas/MisReservas";
 import CalificarExperiencia from "./pages/calificar/CalificarExperiencia";
+import MisCalificaciones from "./pages/calificaciones/MisCalificaciones";
 
 function App() {
   return (
@@ -68,6 +69,12 @@ function App() {
         <Route path="/calificar" element={
           <ProtectedRoute>
             <CalificarExperiencia />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/mis-calificaciones" element={
+          <ProtectedRoute>
+            <MisCalificaciones />
           </ProtectedRoute>
         } />
 

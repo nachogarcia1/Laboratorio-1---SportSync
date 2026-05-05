@@ -4,7 +4,9 @@ const HacerReserva = () => {
   const [sedes, setSedes]       = useState([])
   const [sedeId, setSedeId]     = useState(null)
   const [canchas, setCanchas]   = useState([])
-  const [fecha, setFecha]       = useState("2026-04-14")
+  const _d    = new Date();
+  const today = `${_d.getFullYear()}-${String(_d.getMonth() + 1).padStart(2, "0")}-${String(_d.getDate()).padStart(2, "0")}`;
+  const [fecha, setFecha]       = useState(today)
 
   // 1. Al cargar la página, traé las sedes
   useEffect(() => {
@@ -37,7 +39,7 @@ const HacerReserva = () => {
       </select>
 
       {/* Selector de fecha */}
-      <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+      <input type="date" value={fecha} min={today} onChange={e => setFecha(e.target.value)} />
 
       {/* Lista de canchas */}
       {canchas.map(cancha => (

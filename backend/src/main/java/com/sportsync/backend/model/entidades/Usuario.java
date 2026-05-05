@@ -1,5 +1,6 @@
-package com.sportsync.backend.model;
+package com.sportsync.backend.model.entidades;
 
+import com.sportsync.backend.model.admin.EstadoUsuario;
 import jakarta.persistence.*;
 
 @Entity
@@ -30,10 +31,10 @@ public class Usuario {
     private Rol rol = Rol.NO_SOCIO;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(30) DEFAULT 'ACTIVO'")
+    @Column(nullable = false)
     private EstadoUsuario estado = EstadoUsuario.ACTIVO;
 
-    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT true")
+    @Column(nullable = false)
     private boolean activo = true;
 
     public Usuario() {}

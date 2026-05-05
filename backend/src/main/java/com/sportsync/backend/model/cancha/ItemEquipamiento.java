@@ -1,4 +1,4 @@
-package com.sportsync.backend.model;
+package com.sportsync.backend.model.cancha;
 
 import jakarta.persistence.*;
 

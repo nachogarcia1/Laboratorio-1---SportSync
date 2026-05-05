@@ -1,6 +1,6 @@
 package com.sportsync.backend.controller;
 
-import com.sportsync.backend.model.Sede;
+import com.sportsync.backend.model.sede.Sede;
 import com.sportsync.backend.service.SedeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,7 +48,7 @@ public class SedeController {
 
     // ── UC-10 Admin: crear sede ───────────────────────────────────────────────
     // POST /sedes
-    // Body: { nombre, direccion, horarios }
+    // Body: { nombre, direccion, horaApertura, horaCierre }
 
     @PostMapping
     public ResponseEntity<?> crear(@RequestBody Sede sede) {
@@ -61,7 +61,7 @@ public class SedeController {
 
     // ── UC-10 Admin: editar sede ──────────────────────────────────────────────
     // PUT /sedes/{id}
-    // Body: { nombre (opcional), direccion (opcional), horarios (opcional) }
+    // Body: { nombre (opcional), direccion (opcional), horaApertura (opcional), horaCierre (opcional) }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> editar(@PathVariable Long id,
@@ -71,7 +71,8 @@ public class SedeController {
                     id,
                     body.get("nombre"),
                     body.get("direccion"),
-                    body.get("horarios")
+                    body.get("horaApertura"),
+                    body.get("horaCierre")
             );
             return ResponseEntity.ok(actualizada);
         } catch (Exception e) {

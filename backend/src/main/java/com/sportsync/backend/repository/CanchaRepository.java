@@ -1,7 +1,7 @@
 package com.sportsync.backend.repository;
 
-import com.sportsync.backend.model.Cancha;
-import com.sportsync.backend.model.EstadoCancha;
+import com.sportsync.backend.model.cancha.Cancha;
+import com.sportsync.backend.model.admin.EstadoCancha;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 

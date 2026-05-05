@@ -1,9 +1,16 @@
 package com.sportsync.backend.service;
 
+import com.sportsync.backend.dto.CriticaCanchaResponse;
 import com.sportsync.backend.exception.UsuarioNoEncontradoException;
-import com.sportsync.backend.model.*;
+import com.sportsync.backend.model.cancha.Cancha;
+import com.sportsync.backend.model.critica.CriticaCancha;
+import com.sportsync.backend.model.critica.CriticaUsuario;
+import com.sportsync.backend.model.entidades.Rol;
+import com.sportsync.backend.model.entidades.Usuario;
+import com.sportsync.backend.model.reserva.Reserva;
 import com.sportsync.backend.repository.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -77,8 +84,12 @@ public class CriticaService {
         return criticaCanchaRepo.findByCanchaId(canchaId);
     }
 
-    public List<CriticaCancha> getCriticasByUsuario(Long usuarioId) {
-        return criticaCanchaRepo.findByUsuarioId(usuarioId);
+    @Transactional(readOnly = true)
+    public List<CriticaCanchaResponse> getCriticasByUsuario(Long usuarioId) {
+        return criticaCanchaRepo.findByUsuarioId(usuarioId)
+                .stream()
+                .map(CriticaCanchaResponse::new)
+                .toList();
     }
 
     public boolean yaCalificoReserva(Long reservaId) {
@@ -86,8 +97,11 @@ public class CriticaService {
     }
 
     public CriticaCancha criticarCancha(Long usuarioId, Long canchaId,
-                                        Long reservaId, int nota, String comentario) {
-        validarNota(nota);
+                                        Long reservaId, int notaCancha, int notaStaff,
+                                        int notaServicios, String comentario) {
+        validarNota(notaCancha);
+        validarNota(notaStaff);
+        validarNota(notaServicios);
 
         Reserva reserva = reservaRepo.findById(reservaId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Reserva no encontrada."));
@@ -114,7 +128,9 @@ public class CriticaService {
         critica.setUsuario(usuario);
         critica.setCancha(cancha);
         critica.setReserva(reserva);
-        critica.setNota(nota);
+        critica.setNotaCancha(notaCancha);
+        critica.setNotaStaff(notaStaff);
+        critica.setNotaServicios(notaServicios);
         critica.setComentario(comentario);
 
         return criticaCanchaRepo.save(critica);

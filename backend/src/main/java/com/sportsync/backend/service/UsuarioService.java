@@ -1,7 +1,9 @@
 package com.sportsync.backend.service;
 
 import com.sportsync.backend.exception.UsuarioNoEncontradoException;
-import com.sportsync.backend.model.*;
+import com.sportsync.backend.model.admin.*;
+import com.sportsync.backend.model.entidades.Rol;
+import com.sportsync.backend.model.entidades.Usuario;
 import com.sportsync.backend.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

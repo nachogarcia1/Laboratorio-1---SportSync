@@ -18,6 +18,10 @@ function Login() {
     if (!email.trim()) {
       setError("Ingresá tu correo electrónico"); return;
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Ingresá un correo electrónico válido"); return;
+    }
     if (!password) {
       setError("Ingresá tu contraseña"); return;
     }

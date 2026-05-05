@@ -1,9 +1,9 @@
 package com.sportsync.backend.repository;
 
-import com.sportsync.backend.model.Usuario;
+import com.sportsync.backend.model.entidades.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
-import com.sportsync.backend.model.EstadoUsuario;
+import com.sportsync.backend.model.admin.EstadoUsuario;
 import java.util.List;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {

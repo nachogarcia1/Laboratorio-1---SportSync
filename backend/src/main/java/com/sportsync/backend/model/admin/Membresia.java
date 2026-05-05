@@ -1,6 +1,7 @@
-package com.sportsync.backend.model;
+package com.sportsync.backend.model.admin;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.sportsync.backend.model.entidades.Usuario;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 

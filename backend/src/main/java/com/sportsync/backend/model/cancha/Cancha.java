@@ -1,5 +1,7 @@
-package com.sportsync.backend.model;
+package com.sportsync.backend.model.cancha;
 
+import com.sportsync.backend.model.admin.EstadoCancha;
+import com.sportsync.backend.model.sede.Sede;
 import jakarta.persistence.*;
 
 @Entity

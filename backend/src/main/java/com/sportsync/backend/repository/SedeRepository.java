@@ -1,6 +1,6 @@
 package com.sportsync.backend.repository;
 
-import com.sportsync.backend.model.Sede;
+import com.sportsync.backend.model.sede.Sede;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 

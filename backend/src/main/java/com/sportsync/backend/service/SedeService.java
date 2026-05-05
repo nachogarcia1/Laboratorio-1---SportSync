@@ -1,7 +1,7 @@
 package com.sportsync.backend.service;
 
 import com.sportsync.backend.exception.UsuarioNoEncontradoException;
-import com.sportsync.backend.model.Sede;
+import com.sportsync.backend.model.sede.Sede;
 import com.sportsync.backend.repository.SedeRepository;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +44,7 @@ public class SedeService {
 
     // ── Editar ────────────────────────────────────────────────────────────────
 
-    public Sede editar(Long id, String nuevoNombre, String nuevaDireccion, String nuevosHorarios) {
+    public Sede editar(Long id, String nuevoNombre, String nuevaDireccion, String nuevaHoraApertura, String nuevaHoraCierre) {
         Sede sede = obtenerPorId(id);
 
         if (nuevoNombre != null && !nuevoNombre.isBlank()) {
@@ -53,8 +53,11 @@ public class SedeService {
         if (nuevaDireccion != null && !nuevaDireccion.isBlank()) {
             sede.setDireccion(nuevaDireccion);
         }
-        if (nuevosHorarios != null && !nuevosHorarios.isBlank()) {
-            sede.setHorarios(nuevosHorarios);
+        if (nuevaHoraApertura != null && !nuevaHoraApertura.isBlank()) {
+            sede.setHoraApertura(nuevaHoraApertura);
+        }
+        if (nuevaHoraCierre != null && !nuevaHoraCierre.isBlank()) {
+            sede.setHoraCierre(nuevaHoraCierre);
         }
 
         return repo.save(sede);

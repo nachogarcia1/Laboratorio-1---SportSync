@@ -20,6 +20,7 @@ function NavbarPrivate() {
         <Link to="/home">Inicio</Link>
         <Link to="/sedes">Sedes</Link>
         <Link to="/mis-reservas">Mis Reservas</Link>
+        <Link to="/mis-calificaciones">Mis Calificaciones</Link>
         <Link to="/perfil">Perfil</Link>
         {usuario?.rol === "ADMIN" && (
             <Link to="/admin">Panel Admin</Link>

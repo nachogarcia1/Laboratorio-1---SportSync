@@ -1,0 +1,270 @@
+/* ── Página completa ───────────────────────────── */
+.hacer-reserva {
+  min-height: 100vh;
+  background: var(--light-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.hacer-reserva__main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px;
+  width: 100%;
+}
+
+/* ── Header ────────────────────────────────────── */
+.hacer-reserva__header {
+  background: var(--navy);
+  padding: 18px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hacer-reserva__titulo {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+}
+
+.hacer-reserva__titulo span {
+  color: #4caf50;
+}
+
+.hacer-reserva__btn-zona {
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Barra de filtros ──────────────────────────── */
+.hacer-reserva__filtros {
+  background: #e8e9ec;
+  padding: 12px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 28px;
+  gap: 12px;
+}
+
+.hacer-reserva__tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.hacer-reserva__tab {
+  background: transparent;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hacer-reserva__tab--activo {
+  background: var(--navy);
+  color: white;
+  border-color: var(--navy);
+}
+
+.hacer-reserva__fecha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.hacer-reserva__fecha input {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hacer-reserva__fecha-btn {
+  background: white;
+  border: 1px solid var(--mid-gray);
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Cards de canchas ──────────────────────────── */
+.canchas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cancha-card {
+  background: white;
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cancha-card__body {
+  display: flex;
+  gap: 0;
+}
+
+.cancha-card__imagen {
+  width: 200px;
+  min-height: 160px;
+  flex-shrink: 0;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), #aaa, transparent calc(50% + 1px)),
+    linear-gradient(to bottom right, transparent calc(50% - 1px), #aaa, transparent calc(50% + 1px));
+  background-color: #e8e9ec;
+  border: 1px solid #ccc;
+}
+
+.cancha-card__contenido {
+  flex: 1;
+  padding: 16px 20px;
+}
+
+.cancha-card__titulo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.cancha-card__nombre {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cancha-card__rating {
+  color: #f4b400;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ── Slots de horario ──────────────────────────── */
+.cancha-card__slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cancha-card__slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slot__hora-inicio {
+  width: 60px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.slot__hora-fin {
+  flex: 1;
+  background: #f0f1f3;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-main);
+}
+
+.slot__badge--popular {
+  background: #f4b400;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 6px;
+  flex: 1;
+}
+
+.slot__badge--socio {
+  background: #4caf50;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 6px;
+  flex: 1;
+}
+
+.slot__btn-reservar {
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.slot__btn-reservar:hover {
+  background: #43a047;
+}
+
+/* ── Footer de la card ─────────────────────────── */
+.cancha-card__footer {
+  background: var(--navy);
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancha-card__footer-info {
+  display: flex;
+  gap: 20px;
+}
+
+.cancha-card__chevron {
+  font-size: 16px;
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 700px) {
+  .cancha-card__imagen {
+    display: none;
+  }
+
+  .hacer-reserva__filtros {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cancha-card__slot {
+    flex-wrap: wrap;
+  }
+}
