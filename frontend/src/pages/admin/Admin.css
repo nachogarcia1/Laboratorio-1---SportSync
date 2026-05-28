@@ -258,7 +258,9 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   padding: 32px;
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-header {
@@ -556,4 +558,27 @@
 .usuario-confirmacion p {
   margin: 0.2rem 0;
   font-size: 0.9rem;
+}
+
+/* ── Mapa picker de sede ──────────────────────────────────────────────────── */
+.modal-map-picker {
+  margin-top: 0.25rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  height: 220px;
+  cursor: crosshair;
+}
+
+.modal-map-hint {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.modal-map-loading {
+  font-size: 0.8rem;
+  color: #6b7280;
+  padding: 0.25rem 0;
+  font-style: italic;
 }

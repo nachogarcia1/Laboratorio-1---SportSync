@@ -43,10 +43,10 @@ public class CriticaService {
     }
 
     public List<CriticaUsuario> getCriticasUsuario(Long usuarioId) {
-        return criticaUsuarioRepo.findByUsuarioId(usuarioId);
+        return criticaUsuarioRepo.findByUsuario_Id(usuarioId);
     }
 
-    public CriticaUsuario criticarUsuario(Long adminId, Long usuarioId, int nota, String comentario) {
+    public CriticaUsuario criticarUsuario(Long adminId, Long usuarioId, int nota, String comentario, Long reservaId) {
         validarNota(nota);
 
         Usuario admin = usuarioRepo.findById(adminId)
@@ -59,9 +59,21 @@ public class CriticaService {
         Usuario usuario = usuarioRepo.findById(usuarioId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
+        Reserva reserva = reservaRepo.findById(reservaId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Reserva no encontrada."));
+
+        if (!reserva.getUsuario().getId().equals(usuarioId)) {
+            throw new IllegalStateException("La reserva no pertenece a ese usuario.");
+        }
+
+        if (criticaUsuarioRepo.existsByReserva_Id(reservaId)) {
+            throw new IllegalStateException("Ya existe una calificación para esta reserva.");
+        }
+
         CriticaUsuario critica = new CriticaUsuario();
         critica.setAdmin(admin);
         critica.setUsuario(usuario);
+        critica.setReserva(reserva);
         critica.setNota(nota);
         critica.setComentario(comentario);
 

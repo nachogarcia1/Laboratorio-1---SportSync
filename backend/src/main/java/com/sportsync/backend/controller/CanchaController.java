@@ -19,6 +19,14 @@ public class CanchaController {
         this.service = service;
     }
 
+    // ── Búsqueda pública: GET /canchas/buscar?nombre=&tipo= ──────────────────
+    @GetMapping("/buscar")
+    public List<Cancha> buscar(
+            @RequestParam(required = false) String nombre,
+            @RequestParam(required = false) Integer tipo) {
+        return service.buscar(nombre, tipo);
+    }
+
     // ── UC-21: Filtrar canchas (público) ──────────────────────────────────────
     // GET /canchas?sedeId=1&tipo=5
 

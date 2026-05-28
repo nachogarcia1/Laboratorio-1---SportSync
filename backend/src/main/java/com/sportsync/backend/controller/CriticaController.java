@@ -39,7 +39,9 @@ public class CriticaController {
             Long usuarioId    = ((Number) body.get("usuarioId")).longValue();
             int nota          = ((Number) body.get("nota")).intValue();
             String comentario = (String) body.get("comentario");
-            return ResponseEntity.ok(service.criticarUsuario(adminId, usuarioId, nota, comentario));
+            Long reservaId = ((Number) body.get("reservaId")).longValue();
+
+            return ResponseEntity.ok(service.criticarUsuario(adminId, usuarioId, nota, comentario, reservaId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
