@@ -3,6 +3,9 @@ package com.sportsync.backend.model.admin;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sportsync.backend.model.entidades.Usuario;
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.LocalDate;
 
 @Entity
@@ -15,6 +18,7 @@ public class Suspension {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JsonIgnore
     private Usuario usuario;
 

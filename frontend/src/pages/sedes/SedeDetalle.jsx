@@ -27,6 +27,10 @@ function SedeDetalle() {
   const navigate = useNavigate();
 
   const [sede,    setSede]    = useState(null);
+
+  const HORA_APERTURA = parseInt(sede?.horaApertura) || 8;
+  const HORA_CIERRE   = parseInt(sede?.horaCierre) || 22;
+
   const [canchas, setCanchas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
@@ -71,7 +75,7 @@ function SedeDetalle() {
   useEffect(() => {
     if (canchas.length === 0) return;
     canchas.forEach(c => {
-      apiFetch(`/feedback/canchas/${c.id}/rating`)
+      apiFetch(`/criticas/canchas/${c.id}/rating`)
         .then(data => setRatingsMap(prev => ({ ...prev, [c.id]: data.rating })))
         .catch(() => setRatingsMap(prev => ({ ...prev, [c.id]: 0 })));
     });
@@ -116,8 +120,6 @@ function SedeDetalle() {
   const fechaFormateada = `${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`;
 
   function getSlotsDisponibles(canchasGrupo) {
-    const HORA_APERTURA = parseInt(sede?.horaApertura) || 8;
-    const HORA_CIERRE   = parseInt(sede?.horaCierre)   || 22;
     const slots = [];
     for (let h = HORA_APERTURA; h < HORA_CIERRE; h++) {
       const ini = horaStr(h);

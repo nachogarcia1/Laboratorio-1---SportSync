@@ -37,6 +37,9 @@ public class Usuario {
     @Column(nullable = false)
     private boolean activo = true;
 
+    //@Column(nullable = false)
+    //private boolean verificado = false;
+
     public Usuario() {}
 
     public Long getId()           { return id; }
@@ -47,6 +50,7 @@ public class Usuario {
     public String getTelefono()   { return telefono; }
     public Rol getRol()           { return rol; }
     public EstadoUsuario getEstado() { return estado; }
+    //public boolean isActivo()   { return activo; }
 
     public void setNombre(String nombre)          { this.nombre = nombre; }
     public void setEmail(String email)            { this.email = email; }
@@ -55,4 +59,5 @@ public class Usuario {
     public void setTelefono(String telefono)      { this.telefono = telefono; }
     public void setRol(Rol rol)                   { this.rol = rol; }
     public void setEstado(EstadoUsuario estado)   { this.estado = estado; }
+    //public void setActivo(boolean activo)       { this.activo = activo; }
 }

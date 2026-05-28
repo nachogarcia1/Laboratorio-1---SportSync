@@ -96,6 +96,20 @@ public class SedeController {
         }
     }
 
+    // ── Admin: geocodificar todas las sedes sin ubicación (batch) ────────────
+    // POST /sedes/admin/geocodificar-todas
+
+    @PostMapping("/admin/geocodificar-todas")
+    public ResponseEntity<?> geocodificarTodas() {
+        SedeService.ResultadoGeocodificacion r = service.geocodificarTodas();
+        return ResponseEntity.ok(Map.of(
+                "procesadas", r.procesadas(),
+                "exitosas",   r.exitosas(),
+                "fallidas",   r.fallidas(),
+                "mensaje",    "Geocodificación completada."
+        ));
+    }
+
     // ── UC-10 Admin: eliminar sede ────────────────────────────────────────────
     // DELETE /sedes/{id}
 

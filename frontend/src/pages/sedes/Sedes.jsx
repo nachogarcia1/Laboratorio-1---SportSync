@@ -48,7 +48,7 @@ function Sedes() {
                 <h3 className="sede-card__nombre">{sede.nombre}</h3>
                 <p className="sede-card__descripcion">{sede.direccion}</p>
                 <div className="sede-card__footer">
-                  <span className="sede-card__ubicacion">🕐 {sede.horarios}</span>
+                  <span className="sede-card__ubicacion">{sede.horaApertura} hasta {sede.horaCierre}</span>
                 </div>
                 <button
                   className="sede-card__btn"

@@ -32,6 +32,10 @@ public class Security {
                         .requestMatchers("/usuarios/login", "/usuarios/register").permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
+                                "/canchas/buscar"
+                        ).permitAll()
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
                                 "/sedes/**", "/canchas/**", "/equipamiento", "/reservas/disponibilidad"
                         ).permitAll()
                         .requestMatchers(
@@ -68,6 +72,10 @@ public class Security {
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.POST,
                                 "/criticas/usuarios"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/reservas/usuario/*/sin-calificar-admin"
                         ).hasRole("ADMIN")
 
                         /*cualquier otra autenticados*/
