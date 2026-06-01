@@ -12,11 +12,15 @@ import com.sportsync.backend.model.reserva.ReservaEquipamiento;
 import com.sportsync.backend.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ReservaService {
@@ -26,6 +30,7 @@ public class ReservaService {
     private final UsuarioRepository usuarioRepo;
     private final ItemEquipamientoRepository itemRepo;
     private final ReservaEquipamientoRepository reservaEquipRepo;
+    private final PrecioInteligenteService precioService;
 
     // Horas mínimas para cancelar sin multa (configurable)
     private static final int HORAS_MIN_CANCELACION = 2;
@@ -36,12 +41,13 @@ public class ReservaService {
                           CanchaRepository canchaRepo,
                           UsuarioRepository usuarioRepo,
                           ItemEquipamientoRepository itemRepo,
-                          ReservaEquipamientoRepository reservaEquipRepo) {
+                          ReservaEquipamientoRepository reservaEquipRepo, PrecioInteligenteService precioService) {
         this.reservaRepo = reservaRepo;
         this.canchaRepo = canchaRepo;
         this.usuarioRepo = usuarioRepo;
         this.itemRepo = itemRepo;
         this.reservaEquipRepo = reservaEquipRepo;
+        this.precioService = precioService;
     }
 
     // ── UC-30: Slots disponibles ──────────────────────────────────────────────
@@ -84,7 +90,8 @@ public class ReservaService {
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
         // Calcular precio base
-        double precio = cancha.getPrecioBase();
+        double descuento = precioService.obtenerDescuento(req.getCanchaId(), req.getHoraInicio());
+        double precio    = cancha.getPrecioBase() * (1 - descuento);
         if (req.isIluminacion()) precio += PRECIO_ILUMINACION;
 
         // Crear reserva
@@ -96,6 +103,8 @@ public class ReservaService {
         reserva.setHoraFin(req.getHoraFin());
         reserva.setIluminacion(req.isIluminacion());
         reserva.setEstado(EstadoReserva.ACTIVA);
+        reserva.setPrecioBase(cancha.getPrecioBase());
+        reserva.setDescuentoAplicado(descuento);
 
         // Agregar equipamiento si hay
         if (req.getEquipamiento() != null && !req.getEquipamiento().isEmpty()) {
@@ -121,6 +130,13 @@ public class ReservaService {
                 reservaEquipRepo.save(re);
             }
         }
+        Long canchaIdTrigger = req.getCanchaId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                precioService.recalcularCancha(canchaIdTrigger);
+            }
+        });
 
         return guardada;
     }
@@ -162,5 +178,23 @@ public class ReservaService {
 
         reserva.setEstado(EstadoReserva.CANCELADA);
         return reservaRepo.save(reserva);
+    }
+
+    public Map<String, Object> calcularPrecioPreview(Long canchaId, LocalTime hora) {
+        Cancha cancha = canchaRepo.findById(canchaId)
+                .orElseThrow(() -> new UsuarioNoEncontradoException("Cancha no encontrada."));
+
+        double descuento   = precioService.obtenerDescuento(canchaId, hora);
+        double precioFinal = cancha.getPrecioBase() * (1 - descuento);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("precioBase",          cancha.getPrecioBase());
+        result.put("descuentoPorcentaje", Math.round(descuento * 100)); // ej: 15 = 15%
+        result.put("precioFinal",         precioFinal);
+        return result;
+    }
+
+    public List<Map<String, Object>> obtenerDescuentosCancha(Long canchaId) {
+        return precioService.obtenerDescuentosPorCancha(canchaId);
     }
 }

@@ -77,6 +77,7 @@ public class Security {
                                 org.springframework.http.HttpMethod.GET,
                                 "/reservas/usuario/*/sin-calificar-admin"
                         ).hasRole("ADMIN")
+                        .requestMatchers("/precios/**").hasRole("ADMIN")
 
                         /*cualquier otra autenticados*/
                         .anyRequest().authenticated()

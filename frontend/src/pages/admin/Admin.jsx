@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { id: "reservas",   label: "Supervisar Reservas",  icon: "📋" },
   { id: "usuarios",   label: "Gestión de Usuarios",  icon: "👥" },
   { id: "ratings",    label: "Historial de Ratings", icon: "⭐" },
+  { id: "precios", label: "Precios Inteligentes", icon: "🏷️" },
 ];
 
 const ACTIVIDAD = [
@@ -84,6 +85,9 @@ function Admin() {
   const [reservaMenuSeleccionada, setReservaMenuSeleccionada] = useState("");
   const [ratingsUsuario,     setRatingsUsuario]     = useState([]);
   const [loadingRatings,     setLoadingRatings]     = useState(false);
+  const [preciosData,    setPreciosData]    = useState([]);
+  const [loadingPrecios, setLoadingPrecios] = useState(false);
+  const [recalculando,   setRecalculando]   = useState(false);
 
   // Modal genérico de confirmación
   const [modalConfirmar, setModalConfirmar] = useState(null);
@@ -229,6 +233,13 @@ function Admin() {
     }
     if (seccion === "usuarios") {
       apiFetch("/usuarios").then(setUsuarios).catch(console.error);
+    }
+    if (seccion === "precios") {
+      setLoadingPrecios(true);
+      apiFetch("/precios/descuentos-todos")
+        .then(data => setPreciosData(data))
+        .catch(console.error)
+        .finally(() => setLoadingPrecios(false));
     }
   }, [seccion]);
 
@@ -474,6 +485,19 @@ function Admin() {
       setEnvioError(err.message);
     }
   };
+
+  async function handleRecalcular() {
+    setRecalculando(true);
+    try {
+      await apiFetch("/precios/recalcular", { method: "POST" });
+      const data = await apiFetch("/precios/descuentos-todos");
+      setPreciosData(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRecalculando(false);
+    }
+  }
 
   return (
     <div className="admin-page">
@@ -837,7 +861,71 @@ function Admin() {
               </section>
             )}
 
-            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && (
+
+            {seccion === "precios" && (
+              <section className="admin-section">
+                <h2 className="admin-section__title">Precios Inteligentes</h2>
+
+                <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                  <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: 0 }}>
+                    Descuentos activos calculados por demanda histórica. Se recalculan automáticamente cada noche.
+                  </p>
+                  <button
+                    className="modal-btn-save"
+                    onClick={handleRecalcular}
+                    disabled={recalculando}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {recalculando ? "Recalculando..." : "🔄 Recalcular ahora"}
+                  </button>
+                </div>
+
+                {loadingPrecios ? (
+                  <p style={{ color: "#6b7280" }}>Cargando...</p>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                    <thead>
+                      <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
+                        <th style={{ padding: "0.75rem" }}>Cancha</th>
+                        <th style={{ padding: "0.75rem" }}>Sede</th>
+                        <th style={{ padding: "0.75rem" }}>Tipo</th>
+                        <th style={{ padding: "0.75rem" }}>Precio Base</th>
+                        <th style={{ padding: "0.75rem" }}>Descuentos Activos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preciosData.map(c => (
+                        <tr key={c.canchaId} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                          <td style={{ padding: "0.75rem", fontWeight: 600 }}>{c.nombre}</td>
+                          <td style={{ padding: "0.75rem" }}>{c.sede}</td>
+                          <td style={{ padding: "0.75rem" }}>Fútbol {c.tipo}</td>
+                          <td style={{ padding: "0.75rem" }}>${c.precioBase.toLocaleString("es-AR")}</td>
+                          <td style={{ padding: "0.75rem" }}>
+                            {c.descuentos.length === 0 ? (
+                              <span style={{ color: "#9ca3af" }}>Sin descuentos</span>
+                            ) : (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                                {c.descuentos.map(d => (
+                                  <span key={d.hora} style={{
+                                    background: "#dcfce7", color: "#16a34a",
+                                    borderRadius: "4px", padding: "2px 6px",
+                                    fontSize: "0.8rem", fontWeight: 600
+                                  }}>
+                                    {d.hora} -{d.descuentoPorcentaje}%
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            )}
+
+            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && (
               <div className="admin-wip"><p>Sección en desarrollo</p></div>
             )}
 
