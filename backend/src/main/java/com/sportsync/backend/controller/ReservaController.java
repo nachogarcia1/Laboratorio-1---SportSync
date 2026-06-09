@@ -52,6 +52,12 @@ public class ReservaController {
         return service.historialUsuario(usuarioId);
     }
 
+    // GET /reservas/usuario/{usuarioId}/sin-calificar-admin
+    @GetMapping("/usuario/{usuarioId}/sin-calificar-admin")
+    public List<Reserva> sinCalificarAdmin(@PathVariable Long usuarioId) {
+        return service.reservasSinCalificarAdmin(usuarioId);
+    }
+
     // ── UC-42: Cancelar reserva ───────────────────────────────────────────────
     // PUT /reservas/{id}/cancelar
     // Body: { usuarioId }

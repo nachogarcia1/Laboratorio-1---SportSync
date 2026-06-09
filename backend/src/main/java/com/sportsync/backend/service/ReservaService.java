@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -64,6 +65,11 @@ public class ReservaService {
         // Validar que la fecha no sea en el pasado
         if (req.getFecha().isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("No podés reservar en una fecha pasada.");
+        }
+
+        // Validar que el horario de hoy no haya pasado
+        if (req.getFecha().isEqual(LocalDate.now()) && req.getHoraInicio().isBefore(LocalTime.now())) {
+            throw new IllegalArgumentException("No podés reservar en un horario que ya pasó.");
         }
 
         // UC-31: Validar anti-solapamiento
@@ -123,6 +129,10 @@ public class ReservaService {
 
     public List<Reserva> historialUsuario(Long usuarioId) {
         return reservaRepo.findByUsuarioId(usuarioId);
+    }
+
+    public List<Reserva> reservasSinCalificarAdmin(Long usuarioId) {
+        return reservaRepo.findReservasSinCalificarAdmin(usuarioId, LocalDate.now(), LocalTime.now());
     }
 
     // ── UC-42: Cancelar reserva ───────────────────────────────────────────────

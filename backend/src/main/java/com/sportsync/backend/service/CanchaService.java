@@ -30,6 +30,15 @@ public class CanchaService {
         return repo.findBySedeIdAndEstado(sedeId, EstadoCancha.HABILITADA);
     }
 
+    // ── Búsqueda por nombre y tipo ────────────────────────────────────────────
+
+    public List<Cancha> buscar(String nombre, Integer tipo) {
+        // Pre-calcular el patrón LIKE: "%" = todos, "%texto%" = filtrado por nombre
+        // Evita pasar null a LOWER() en SQL, lo que causa "function lower(bytea) does not exist"
+        String patron = (nombre == null || nombre.isBlank()) ? "%" : ("%" + nombre.toLowerCase() + "%");
+        return repo.buscar(EstadoCancha.HABILITADA, patron, tipo);
+    }
+
     // ── Filtros públicos (UC-21) ──────────────────────────────────────────────
 
     public List<Cancha> filtrar(Long sedeId, Integer tipo) {

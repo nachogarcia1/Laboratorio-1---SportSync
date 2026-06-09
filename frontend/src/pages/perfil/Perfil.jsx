@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiFetch } from "../../utils/api";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
@@ -14,19 +14,77 @@ function Perfil() {
   const [modalBeneficios,       setModalBeneficios]       = useState(false);
   const [modalConfirmarCancelar, setModalConfirmarCancelar] = useState(false);
   const [errorSocio,            setErrorSocio]            = useState("");
-  const [tabActiva,             setTabActiva]             = useState("canchas");
   const [modalAbierto,          setModalAbierto]          = useState(false);
   const [form, setForm] = useState({
     nombre: usuario?.nombre || "", email: usuario?.email || "",
     dni: "", telefono: "", error: ""
   });
 
-  const stats = { totalReservas: 12, ratingPromedio: 4.3 };
-  const calificaciones = [
-    { id: 1, cancha: "Fútbol 5", sede: "Sede Palermo",   fecha: "25/04/2024", rating: 5 },
-    { id: 2, cancha: "Fútbol 7", sede: "Sede Belgrano",  fecha: "21/04/2024", rating: 4 },
-    { id: 3, cancha: "Fútbol 5", sede: "Sede Caballito", fecha: "15/04/2024", rating: 4 },
-  ];
+  const [reservas,       setReservas]       = useState([]);
+  const [criticasCancha, setCriticasCancha] = useState([]);
+  const [calificaciones, setCalificaciones] = useState([]);
+  const [loadingStats,   setLoadingStats]   = useState(true);
+
+  const [modalCalificar,     setModalCalificar]     = useState(null);
+  const [notaCancha,         setNotaCancha]         = useState(0);
+  const [notaStaff,          setNotaStaff]          = useState(0);
+  const [notaServicios,      setNotaServicios]      = useState(0);
+  const [comentarioCalificar, setComentarioCalificar] = useState("");
+  const [errorCalificar,     setErrorCalificar]     = useState("");
+  const [enviando,           setEnviando]           = useState(false);
+
+  useEffect(() => {
+    if (!usuario) return;
+    Promise.allSettled([
+      apiFetch(`/reservas/usuario/${usuario.id}`),
+      apiFetch(`/criticas/canchas/usuario/${usuario.id}`),
+      apiFetch(`/criticas/usuarios/${usuario.id}`)
+    ])
+      .then(([res, criticas, califs]) => {
+        if (res.status      === "fulfilled") setReservas(res.value);
+        if (criticas.status === "fulfilled") setCriticasCancha(criticas.value);
+        if (califs.status   === "fulfilled") setCalificaciones(califs.value);
+      })
+      .finally(() => setLoadingStats(false));
+  }, []);
+
+  const criticasMap = new Map(criticasCancha.map(c => [c.reservaId, c]));
+
+  const ratingPromedio = calificaciones.length
+    ? (calificaciones.reduce((acc, c) => acc + c.nota, 0) / calificaciones.length).toFixed(1)
+    : "—";
+
+  const esTerminada = (r) => new Date(`${r.fecha}T${r.horaFin}`) < new Date();
+
+  const handleEnviarCalificacion = async (e) => {
+    e.preventDefault();
+    if (!notaCancha || !notaStaff || !notaServicios) {
+      setErrorCalificar("Completá las tres notas."); return;
+    }
+    setEnviando(true);
+    setErrorCalificar("");
+    try {
+      await apiFetch("/criticas/canchas", {
+        method: "POST",
+        body: JSON.stringify({
+          usuarioId:    usuario.id,
+          canchaId:     modalCalificar.cancha.id,
+          reservaId:    modalCalificar.id,
+          notaCancha, notaStaff, notaServicios,
+          comentario:   comentarioCalificar.trim() || null
+        })
+      });
+      const criticas = await apiFetch(`/criticas/canchas/usuario/${usuario.id}`);
+      setCriticasCancha(criticas);
+      setModalCalificar(null);
+      setNotaCancha(0); setNotaStaff(0); setNotaServicios(0);
+      setComentarioCalificar("");
+    } catch (err) {
+      setErrorCalificar(err.message);
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const renderEstrellas = (rating) =>
     Array.from({ length: 5 }, (_, i) => (
@@ -182,44 +240,48 @@ function Perfil() {
                   <span className="perfil-stat-card__icon">📋</span>
                   <div>
                     <p className="perfil-stat-card__label">Total Reservas</p>
-                    <p className="perfil-stat-card__value">{stats.totalReservas}</p>
+                    <p className="perfil-stat-card__value">{loadingStats ? "…" : reservas.length}</p>
                   </div>
                 </div>
                 <div className="perfil-stat-card perfil-stat-card--green">
                   <span className="perfil-stat-card__icon">⭐</span>
                   <div>
                     <p className="perfil-stat-card__label">Tu Rating Promedio</p>
-                    <p className="perfil-stat-card__value">{stats.ratingPromedio}</p>
+                    <p className="perfil-stat-card__value">{loadingStats ? "…" : ratingPromedio}</p>
                   </div>
                 </div>
               </div>
             </section>
 
             <section className="perfil-ratings">
-              <h3 className="perfil-section-title">Mis Calificaciones</h3>
-              <div className="perfil-ratings__tabs">
-                <button
-                  className={`perfil-tab ${tabActiva === "canchas" ? "perfil-tab--active" : ""}`}
-                  onClick={() => setTabActiva("canchas")}
-                >Canchas</button>
-                <button
-                  className={`perfil-tab ${tabActiva === "sedes" ? "perfil-tab--active" : ""}`}
-                  onClick={() => setTabActiva("sedes")}
-                >Sedes</button>
-              </div>
+              <h3 className="perfil-section-title">Mis Reservas</h3>
               <div className="perfil-ratings__list">
-                {calificaciones.map((cal) => (
-                  <div key={cal.id} className="perfil-rating-item">
-                    <div className="perfil-rating-item__info">
-                      <span className="perfil-rating-item__cancha">{cal.cancha}</span>
-                      <span className="perfil-rating-item__sede">{cal.sede}</span>
-                      <span className="perfil-rating-item__fecha">{cal.fecha}</span>
+                {loadingStats && <p className="perfil-ratings__msg">Cargando...</p>}
+                {!loadingStats && reservas.length === 0 && (
+                  <p className="perfil-ratings__msg">No tenés reservas todavía.</p>
+                )}
+                {!loadingStats && reservas.map((r) => {
+                  const critica = criticasMap.get(r.id);
+                  const terminada = esTerminada(r);
+                  const promedio = critica
+                    ? Math.round((critica.notaCancha + critica.notaStaff + critica.notaServicios) / 3)
+                    : null;
+                  return (
+                    <div key={r.id} className="perfil-rating-item">
+                      <div className="perfil-rating-item__info">
+                        <span className="perfil-rating-item__cancha">{r.cancha?.nombre}</span>
+                        <span className="perfil-rating-item__sede">{formatFecha(r.fecha)}</span>
+                        <span className="perfil-rating-item__fecha">{r.horaInicio} — {r.horaFin}</span>
+                      </div>
+                      {critica
+                        ? <div className="perfil-rating-item__estrellas">{renderEstrellas(promedio)}</div>
+                        : terminada
+                          ? <button className="perfil-calificar-btn" onClick={() => { setModalCalificar(r); setErrorCalificar(""); }}>Calificar</button>
+                          : null
+                      }
                     </div>
-                    <div className="perfil-rating-item__estrellas">
-                      {renderEstrellas(cal.rating)}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           </div>
@@ -355,6 +417,51 @@ function Perfil() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {modalCalificar && (
+        <div className="modal-overlay" onClick={() => setModalCalificar(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Calificar reserva</h2>
+              <button className="modal-close" onClick={() => setModalCalificar(null)}>✕</button>
+            </div>
+            <form className="modal-form" onSubmit={handleEnviarCalificacion}>
+              <p style={{ marginBottom: "1rem", color: "#4c5562" }}>
+                <strong>{modalCalificar.cancha?.nombre}</strong> — {formatFecha(modalCalificar.fecha)}
+              </p>
+              {[
+                { label: "Cancha", val: notaCancha, set: setNotaCancha },
+                { label: "Staff",  val: notaStaff,  set: setNotaStaff  },
+                { label: "Servicios", val: notaServicios, set: setNotaServicios }
+              ].map(({ label, val, set }) => (
+                <div key={label} style={{ marginBottom: "0.75rem" }}>
+                  <label>{label}</label>
+                  <div style={{ fontSize: "1.75rem" }}>
+                    {[1,2,3,4,5].map(n => (
+                      <span key={n} style={{ cursor: "pointer", color: n <= val ? "#f59e0b" : "#d1d5db" }}
+                        onClick={() => set(n)}>★</span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <label>Comentario (opcional)</label>
+              <textarea
+                value={comentarioCalificar}
+                onChange={e => setComentarioCalificar(e.target.value)}
+                rows={3} placeholder="Contanos tu experiencia..."
+                style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem" }}
+              />
+              {errorCalificar && <p className="form__error">{errorCalificar}</p>}
+              <div className="modal-actions">
+                <button type="button" className="modal-btn-cancel" onClick={() => setModalCalificar(null)}>Cancelar</button>
+                <button type="submit" className="modal-btn-save" disabled={enviando}>
+                  {enviando ? "Enviando..." : "Enviar Calificación"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -28,7 +28,7 @@ public class UsuarioService {
         this.membresiaRepo = membresiaRepo;
     }
 
-    public List<Usuario> listar() { return repo.findAll(); }
+    public List<Usuario> listar() { return repo.findByRolNot(Rol.ADMIN); }
 
     public Usuario registrar(Usuario usuario) {
         if (repo.existsByEmail(usuario.getEmail()))

@@ -11,9 +11,11 @@ import java.util.List;
 public class SedeService {
 
     private final SedeRepository repo;
+    private final GeocodingService geocodingService;
 
-    public SedeService(SedeRepository repo) {
+    public SedeService(SedeRepository repo, GeocodingService geocodingService) {
         this.repo = repo;
+        this.geocodingService = geocodingService;
     }
 
     // ── Listado público (solo activas) ────────────────────────────────────────
@@ -39,6 +41,7 @@ public class SedeService {
 
     public Sede crear(Sede sede) {
         sede.setActiva(false);
+        geocodificarSiEsNecesario(sede);
         return repo.save(sede);
     }
 
@@ -52,6 +55,8 @@ public class SedeService {
         }
         if (nuevaDireccion != null && !nuevaDireccion.isBlank()) {
             sede.setDireccion(nuevaDireccion);
+            // Forzar re-geocodificación si cambia la dirección
+            sede.setUbicacion(null);
         }
         if (nuevaHoraApertura != null && !nuevaHoraApertura.isBlank()) {
             sede.setHoraApertura(nuevaHoraApertura);
@@ -60,6 +65,7 @@ public class SedeService {
             sede.setHoraCierre(nuevaHoraCierre);
         }
 
+        geocodificarSiEsNecesario(sede);
         return repo.save(sede);
     }
 
@@ -78,5 +84,47 @@ public class SedeService {
         Sede sede = obtenerPorId(id);
         sede.setActiva(!sede.isActiva());
         return repo.save(sede);
+    }
+
+    // ── Geocodificar todas las sedes sin ubicación (batch) ────────────────────
+
+    public record ResultadoGeocodificacion(int procesadas, int exitosas, int fallidas) {}
+
+    public ResultadoGeocodificacion geocodificarTodas() {
+        List<Sede> sinUbicacion = repo.findByUbicacionIsNull();
+        int exitosas = 0, fallidas = 0;
+
+        for (Sede sede : sinUbicacion) {
+            if (sede.getDireccion() == null || sede.getDireccion().isBlank()) {
+                fallidas++;
+                continue;
+            }
+            GeocodingResult result = geocodingService.geocodificar(sede.getDireccion());
+            if (result != null) {
+                sede.setUbicacion(result.ubicacion());
+                sede.setDireccion(result.direccionCanonica());
+                repo.save(sede);
+                exitosas++;
+            } else {
+                fallidas++;
+            }
+            // Nominatim exige máximo 1 solicitud por segundo
+            try { Thread.sleep(1200); } catch (InterruptedException ignored) {}
+        }
+        return new ResultadoGeocodificacion(sinUbicacion.size(), exitosas, fallidas);
+    }
+
+    // ── Geocodificar si no tiene coordenadas ──────────────────────────────────
+
+    private void geocodificarSiEsNecesario(Sede sede) {
+        if (sede.getUbicacion() == null && sede.getDireccion() != null) {
+            GeocodingResult result = geocodingService.geocodificar(sede.getDireccion());
+            if (result != null) {
+                sede.setUbicacion(result.ubicacion());
+                // Normalizar la dirección con el nombre canónico de Nominatim
+                // para garantizar consistencia entre la dirección guardada y las coordenadas
+                sede.setDireccion(result.direccionCanonica());
+            }
+        }
     }
 }

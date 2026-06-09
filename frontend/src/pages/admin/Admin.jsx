@@ -1,9 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import L from "leaflet";
 import { apiFetch } from "../../utils/api";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Admin.css";
+
+// Fix para los íconos de Leaflet con Vite/bundlers
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl:       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl:     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+/** Captura clicks del mapa y los pasa al padre. */
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({ click: (e) => onMapClick(e.latlng.lat, e.latlng.lng) });
+  return null;
+}
+
+/** Vuela suavemente el mapa a nuevas coordenadas cuando cambia `center`. */
+function MapFlyTo({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) map.flyTo(center, 15, { animate: true, duration: 0.8 });
+  }, [center, map]);
+  return null;
+}
 
 const NAV_ITEMS = [
   { id: "dashboard",  label: "Dashboard",           icon: "📊" },
@@ -25,7 +50,11 @@ function Admin() {
   const [suspenderAbierto, setSuspender]  = useState(false);
   const [modalSede,        setModalSede]        = useState(false);
   const [modalCancha,      setModalCancha]       = useState(false);
-  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", error: "" });
+  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" });
+  const [geocodandoDir,    setGeocodandoDir]     = useState(false);
+  const geocodDirTimer = useRef(null);
+  const [geocodandoBatch,  setGeocodandoBatch]   = useState(false);
+  const [geocodBatchMsg,   setGeocodBatchMsg]    = useState("");
   const [formCancha,       setFormCancha]        = useState({ sedeId: "", nombre: "", tipo: "5", precioBase: "", error: "" });
   const [sedesDisponibles, setSedesDisponibles]  = useState([]);
   const [sedes,            setSedes]             = useState([]);
@@ -42,13 +71,17 @@ function Admin() {
   const [filtroUsuario,    setFiltroUsuario]     = useState("TODOS");
   const [emailCalificar,   setEmailCalificar]    = useState("");
   const [usuarioTarget,    setUsuarioTarget]     = useState(null);
+  const [reservasUsuario,    setReservasUsuario]    = useState([]);
+  const [reservaSeleccionada, setReservaSeleccionada] = useState("");
   const [busquedaError,    setBusquedaError]     = useState("");
   const [notaUsuario,      setNotaUsuario]       = useState(0);
   const [hoverNota,        setHoverNota]         = useState(0);
   const [comentarioU,      setComentarioU]       = useState("");
   const [envioMsg,         setEnvioMsg]          = useState("");
   const [envioError,       setEnvioError]        = useState("");
-  const [modalCalificarUser, setModalCalificarUser] = useState(null);
+  const [modalCalificarUser,    setModalCalificarUser]    = useState(null);
+  const [reservasModalCalificar, setReservasModalCalificar] = useState([]);
+  const [reservaMenuSeleccionada, setReservaMenuSeleccionada] = useState("");
   const [ratingsUsuario,     setRatingsUsuario]     = useState([]);
   const [loadingRatings,     setLoadingRatings]     = useState(false);
 
@@ -85,10 +118,73 @@ function Admin() {
         })
       });
       setModalSede(false);
-      setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", error: "" });
+      setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" });
     } catch (err) {
       setFormSede(f => ({ ...f, error: err.message }));
     }
+  };
+
+  /** Geocodifica todas las sedes que no tienen ubicación todavía */
+  const handleGeocodificarTodas = async () => {
+    setGeocodandoBatch(true);
+    setGeocodBatchMsg("");
+    try {
+      const data = await apiFetch("/sedes/admin/geocodificar-todas", { method: "POST" });
+      setGeocodBatchMsg(`✓ ${data.exitosas} geocodificadas, ${data.fallidas} fallidas de ${data.procesadas} sedes sin ubicación.`);
+      // Recargar la lista para ver las direcciones normalizadas
+      const sedesActualizadas = await apiFetch("/sedes/admin/todas");
+      setSedes(sedesActualizadas);
+    } catch (err) {
+      setGeocodBatchMsg("Error al geocodificar: " + err.message);
+    } finally {
+      setGeocodandoBatch(false);
+    }
+  };
+
+  /** Click en el mapa del modal: reverse geocode → actualiza campo dirección */
+  const handleMapPickerClick = async (lat, lng) => {
+    // Cancelar cualquier geocodificación por texto pendiente
+    if (geocodDirTimer.current) clearTimeout(geocodDirTimer.current);
+    // Fijar marker; limpiar mapFlyTarget (el usuario ya ve el punto clickeado)
+    setFormSede(f => ({ ...f, markerPos: [lat, lng], mapFlyTarget: null }));
+    setGeocodandoDir(true);
+    try {
+      const data = await apiFetch(`/geocoding/reverse?lat=${lat}&lng=${lng}`);
+      if (data.direccion) {
+        setFormSede(f => ({ ...f, direccion: data.direccion }));
+      }
+    } catch (err) {
+      console.error("Error al obtener dirección:", err);
+    } finally {
+      setGeocodandoDir(false);
+    }
+  };
+
+  /** Typing en el campo dirección: debounce 800ms → forward geocode → mueve el mapa */
+  const handleDireccionChange = (e) => {
+    const val = e.target.value;
+    setFormSede(f => ({ ...f, direccion: val }));
+
+    if (geocodDirTimer.current) clearTimeout(geocodDirTimer.current);
+    if (!val.trim() || val.trim().length < 5) return;
+
+    geocodDirTimer.current = setTimeout(async () => {
+      setGeocodandoDir(true);
+      try {
+        const data = await apiFetch(`/geocoding/forward?q=${encodeURIComponent(val)}`);
+        if (data.lat != null && data.lng != null) {
+          setFormSede(f => ({
+            ...f,
+            markerPos:    [data.lat, data.lng],
+            mapFlyTarget: [data.lat, data.lng],
+          }));
+        }
+      } catch (err) {
+        console.error("Error al geocodificar dirección:", err);
+      } finally {
+        setGeocodandoDir(false);
+      }
+    }, 800);
   };
 
   const handleAbrirModalCancha = async () => {
@@ -297,17 +393,24 @@ function Admin() {
 
   const handleCalificarUsuario = async (e) => {
     e.preventDefault();
+    if (!reservaSeleccionada) { setEnvioError("Seleccioná una reserva."); return; }
+    if (!reservasUsuario.some(r => r.id === Number(reservaSeleccionada))) {
+      setEnvioError("Esa reserva ya fue calificada. Buscá el usuario de nuevo."); return;
+    }
     if (notaUsuario === 0) { setEnvioError("Seleccioná una nota."); return; }
     setEnvioError("");
+    const payload = {
+      adminId:    adminData.id,
+      usuarioId:  usuarioTarget.id,
+      reservaId:  Number(reservaSeleccionada),
+      nota:       notaUsuario,
+      comentario: comentarioU.trim() || null
+    };
+    console.log("Enviando calificación:", payload);
     try {
       await apiFetch("/criticas/usuarios", {
         method: "POST",
-        body: JSON.stringify({
-          adminId:    adminData.id,
-          usuarioId:  usuarioTarget.id,
-          nota:       notaUsuario,
-          comentario: comentarioU.trim() || null
-        })
+        body: JSON.stringify(payload)
       });
       setEnvioMsg(`Calificación enviada para ${usuarioTarget.nombre}.`);
       setNotaUsuario(0);
@@ -324,14 +427,22 @@ function Admin() {
     setBusquedaError("");
     setUsuarioTarget(null);
     setRatingsUsuario([]);
+    setReservasUsuario([]);
     setEnvioMsg("");
     setEnvioError("");
     try {
       const data = await apiFetch(`/usuarios/buscar?email=${encodeURIComponent(emailCalificar)}`);
       setUsuarioTarget(data);
+      setReservaSeleccionada("");
       setLoadingRatings(true);
-      const ratings = await apiFetch(`/criticas/usuarios/${data.id}`);
-      setRatingsUsuario(ratings);
+
+      const [reservasResult, ratingsResult] = await Promise.allSettled([
+        apiFetch(`/reservas/usuario/${data.id}/sin-calificar-admin`),
+        apiFetch(`/criticas/usuarios/${data.id}`)
+      ]);
+
+      if (reservasResult.status === "fulfilled") setReservasUsuario(reservasResult.value);
+      if (ratingsResult.status === "fulfilled") setRatingsUsuario(ratingsResult.value);
     } catch (err) {
       setBusquedaError(err.message);
     } finally {
@@ -341,6 +452,7 @@ function Admin() {
 
   const handleCalificarDesdeMenu = async (e) => {
     e.preventDefault();
+    if (!reservaMenuSeleccionada) { setEnvioError("Seleccioná una reserva."); return; }
     if (notaUsuario === 0) { setEnvioError("Seleccioná una nota."); return; }
     setEnvioError("");
     try {
@@ -349,6 +461,7 @@ function Admin() {
         body: JSON.stringify({
           adminId:    adminData.id,
           usuarioId:  modalCalificarUser.id,
+          reservaId:  Number(reservaMenuSeleccionada),
           nota:       notaUsuario,
           comentario: comentarioU.trim() || null
         })
@@ -447,8 +560,21 @@ function Admin() {
               <section className="admin-section">
                 <div className="admin-section__header">
                   <h2 className="admin-section__title">Gestión de Sedes</h2>
-                  <button className="admin-accion-btn admin-accion-btn--blue" onClick={() => setModalSede(true)}>+ Añadir Sede</button>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <button
+                      className="admin-accion-btn admin-accion-btn--gray"
+                      onClick={handleGeocodificarTodas}
+                      disabled={geocodandoBatch}
+                      title="Geocodifica automáticamente todas las sedes que no tienen ubicación"
+                    >
+                      {geocodandoBatch ? "Geocodificando..." : "📍 Geocodificar todas"}
+                    </button>
+                    <button className="admin-accion-btn admin-accion-btn--blue" onClick={() => setModalSede(true)}>+ Añadir Sede</button>
+                  </div>
                 </div>
+                {geocodBatchMsg && (
+                  <p style={{ fontSize: "0.85rem", color: "#374151", margin: "0.5rem 0" }}>{geocodBatchMsg}</p>
+                )}
                 {sedes.length === 0 && <p className="admin-empty">No hay sedes registradas.</p>}
                 <div className="admin-lista">
                   {sedes.map(sede => (
@@ -578,13 +704,16 @@ function Admin() {
                               ) : (
                                 <button onClick={() => handleRehabilitarUsuario(u.id)}>Rehabilitar</button>
                               )}
-                              <button onClick={() => {
+                              <button onClick={async () => {
                                 setModalCalificarUser(u);
                                 setNotaUsuario(0);
                                 setComentarioU("");
                                 setEnvioError("");
                                 setEnvioMsg("");
+                                setReservaMenuSeleccionada("");
                                 setMenuAbierto(null);
+                                const data = await apiFetch(`/reservas/usuario/${u.id}/sin-calificar-admin`).catch(() => []);
+                                setReservasModalCalificar(data);
                               }}>Calificar</button>
                               <button className="admin-dropdown__danger" onClick={() => handleEliminarUsuario(u.id)}>Eliminar</button>
                             </div>
@@ -618,6 +747,22 @@ function Admin() {
                     <p style={{ marginBottom: "0.75rem" }}>
                       Calificando a: <strong>{usuarioTarget.nombre}</strong> ({usuarioTarget.email})
                     </p>
+                    <label>Reserva</label>
+                    <select
+                      value={reservaSeleccionada}
+                      onChange={e => setReservaSeleccionada(e.target.value)}
+                      required
+                      style = {{width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem" }}
+                    >
+                      <option value="">Seleccioná una reserva</option>
+                      {reservasUsuario.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {r.cancha?.nombre} — {r.fecha} {r.horaInicio} a {r.horaFin}
+                        </option>
+                      ))}
+                      </select>
+                                              
+
                     <label>Nota</label>
                     <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>
                       {[1,2,3,4,5].map(n => (
@@ -631,10 +776,14 @@ function Admin() {
                     </div>
                     <label>Comentario (opcional)</label>
                     <textarea
-                      value={comentarioU} onChange={e => setComentarioU(e.target.value)}
-                      rows={3} placeholder="Motivo de la calificación..."
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem" }}
+                      value={comentarioU}
+                      onChange={e => setComentarioU(e.target.value.slice(0, 255))}
+                      rows={3} placeholder="Motivo de la calificación..." maxLength={255}
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "4px" }}
                     />
+                    <p style={{ fontSize: "11px", color: comentarioU.length >= 240 ? "#dc2626" : "#9ca3af", textAlign: "right", marginBottom: "12px" }}>
+                      {comentarioU.length}/255
+                    </p>
                     {envioError && <p className="form__error">{envioError}</p>}
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button type="button" className="modal-btn-cancel" onClick={() => setUsuarioTarget(null)}>Cancelar</button>
@@ -657,22 +806,26 @@ function Admin() {
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                         <thead>
                           <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
+                            <th style={{ padding: "0.5rem 0.75rem" }}>Cancha</th>
+                            <th style={{ padding: "0.5rem 0.75rem" }}>Fecha reserva</th>
                             <th style={{ padding: "0.5rem 0.75rem" }}>Nota</th>
                             <th style={{ padding: "0.5rem 0.75rem" }}>Comentario</th>
-                            <th style={{ padding: "0.5rem 0.75rem" }}>Fecha</th>
                           </tr>
                         </thead>
                         <tbody>
                           {ratingsUsuario.map(r => (
                             <tr key={r.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                              <td style={{ padding: "0.5rem 0.75rem", fontWeight: 600 }}>
+                                {r.reservaCanchaNombre || "—"}
+                              </td>
+                              <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
+                                {r.reservaFecha || "—"}
+                              </td>
                               <td style={{ padding: "0.5rem 0.75rem" }}>
                                 {"★".repeat(r.nota)}{"☆".repeat(5 - r.nota)}
                               </td>
                               <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
                                 {r.comentario || "—"}
-                              </td>
-                              <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
-                                {r.fecha ? new Date(r.fecha).toLocaleDateString("es-AR") : "—"}
                               </td>
                             </tr>
                           ))}
@@ -694,11 +847,11 @@ function Admin() {
 
       {/* Modal Añadir Sede */}
       {modalSede && (
-        <div className="modal-overlay" onClick={() => setModalSede(false)}>
+        <div className="modal-overlay" onClick={() => { setModalSede(false); setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" }); }}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Añadir Sede</h2>
-              <button className="modal-close" onClick={() => setModalSede(false)}>✕</button>
+              <button className="modal-close" onClick={() => { setModalSede(false); setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" }); }}>✕</button>
             </div>
             <form className="modal-form" onSubmit={handleCrearSede}>
               <label>Nombre</label>
@@ -708,8 +861,28 @@ function Admin() {
                   onChange={e => setFormSede({ ...formSede, nombre: e.target.value })} />
               </div>
               <label>Dirección</label>
-              <input type="text" placeholder="Ej: Av. Santa Fe 1234" value={formSede.direccion} maxLength={150} required
-                onChange={e => setFormSede({ ...formSede, direccion: e.target.value })} />
+              <input type="text" placeholder="Escribí o hacé click en el mapa" value={formSede.direccion} maxLength={255}
+                onChange={handleDireccionChange} />
+              {geocodandoDir && <p className="modal-map-loading">Buscando ubicación...</p>}
+              <label>Ubicación en el mapa</label>
+              <p className="modal-map-hint">Escribí la dirección arriba o hacé click en el mapa — ambos se sincronizan automáticamente.</p>
+              <div className="modal-map-picker">
+                <MapContainer
+                  key="sede-map-picker"
+                  center={[-34.6037, -58.3816]}
+                  zoom={12}
+                  style={{ height: "100%", width: "100%" }}
+                  scrollWheelZoom={false}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  <MapClickHandler onMapClick={handleMapPickerClick} />
+                  <MapFlyTo center={formSede.mapFlyTarget} />
+                  {formSede.markerPos && <Marker position={formSede.markerPos} />}
+                </MapContainer>
+              </div>
               <label>Hora de apertura</label>
               <input type="time" value={formSede.horaApertura} required
                 onChange={e => setFormSede({ ...formSede, horaApertura: e.target.value })} />
@@ -718,8 +891,8 @@ function Admin() {
                 onChange={e => setFormSede({ ...formSede, horaCierre: e.target.value })} />
               {formSede.error && <p className="form__error">{formSede.error}</p>}
               <div className="modal-actions">
-                <button type="button" className="modal-btn-cancel" onClick={() => setModalSede(false)}>Cancelar</button>
-                <button type="submit" className="modal-btn-save">Crear Sede</button>
+                <button type="button" className="modal-btn-cancel" onClick={() => { setModalSede(false); setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" }); }}>Cancelar</button>
+                <button type="submit" className="modal-btn-save" disabled={!formSede.direccion}>Crear Sede</button>
               </div>
             </form>
           </div>
@@ -867,6 +1040,20 @@ function Admin() {
               <p style={{ marginBottom: "0.75rem" }}>
                 Calificando a: <strong>{modalCalificarUser.nombre}</strong> ({modalCalificarUser.email})
               </p>
+              <label>Reserva</label>
+              <select
+                value={reservaMenuSeleccionada}
+                onChange={e => setReservaMenuSeleccionada(e.target.value)}
+                required
+                style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem" }}
+              >
+                <option value="">Seleccioná una reserva</option>
+                {reservasModalCalificar.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.cancha?.nombre} — {r.fecha} {r.horaInicio} a {r.horaFin}
+                  </option>
+                ))}
+              </select>
               <label>Nota</label>
               <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>
                 {[1,2,3,4,5].map(n => (
@@ -879,8 +1066,14 @@ function Admin() {
                 ))}
               </div>
               <label>Comentario (opcional)</label>
-              <textarea value={comentarioU} onChange={e => setComentarioU(e.target.value)}
-                rows={3} placeholder="Motivo de la calificación..." />
+              <textarea
+                value={comentarioU}
+                onChange={e => setComentarioU(e.target.value.slice(0, 255))}
+                rows={3} placeholder="Motivo de la calificación..." maxLength={255}
+              />
+              <p style={{ fontSize: "11px", color: comentarioU.length >= 240 ? "#dc2626" : "#9ca3af", textAlign: "right", marginBottom: "8px" }}>
+                {comentarioU.length}/255
+              </p>
               {envioError && <p className="form__error">{envioError}</p>}
               {envioMsg && <p style={{ color: "#22c55e", fontWeight: 600 }}>{envioMsg}</p>}
               <div className="modal-actions">

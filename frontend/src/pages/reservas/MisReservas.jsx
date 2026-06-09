@@ -101,7 +101,7 @@ function MisReservas() {
     <div className="mis-reservas-page">
       <NavbarPrivate />
       <main className="mis-reservas__main">
-        <h1 className="mis-reservas__title">Mis Reservas</h1>
+        <h1 className="mis-reservas__title">¡Hacé tu Reserva!</h1>
 
         {usuario?.acreditado && (
           <div className="banner-socio">

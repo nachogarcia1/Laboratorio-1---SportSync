@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface SedeRepository extends JpaRepository<Sede, Long> {
     List<Sede> findByActivaTrue();
+    List<Sede> findByUbicacionIsNull();
 }

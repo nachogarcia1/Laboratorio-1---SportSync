@@ -15,6 +15,21 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     // Historial de un usuario
     List<Reserva> findByUsuarioId(Long usuarioId);
 
+    // Reservas pasadas sin calificación de admin
+    @Query("""
+        SELECT r FROM Reserva r
+        WHERE r.usuario.id = :usuarioId
+        AND (r.fecha < :hoy OR (r.fecha = :hoy AND r.horaFin < :ahora))
+        AND NOT EXISTS (
+            SELECT cu FROM CriticaUsuario cu WHERE cu.reserva.id = r.id
+        )
+    """)
+    List<Reserva> findReservasSinCalificarAdmin(
+            @Param("usuarioId") Long usuarioId,
+            @Param("hoy") LocalDate hoy,
+            @Param("ahora") LocalTime ahora
+    );
+
     // Reservas activas de una cancha en una fecha
     List<Reserva> findByCanchaIdAndFechaAndEstado(Long canchaId, LocalDate fecha, EstadoReserva estado);
 
