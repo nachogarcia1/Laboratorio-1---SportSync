@@ -19,6 +19,7 @@ function NavbarPrivate() {
       <nav className="navbar__links">
         <Link to="/home">Inicio</Link>
         <Link to="/sedes">Sedes</Link>
+        <Link to="/buscar">Buscar Canchas</Link>
         <Link to="/mis-reservas">Mis Reservas</Link>
         <Link to="/mis-calificaciones">Mis Calificaciones</Link>
         <Link to="/perfil">Perfil</Link>

@@ -20,6 +20,13 @@ export async function apiFetch(endpoint, options = {}) {
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
 
+  // Sesión expirada o usuario eliminado → forzar re-login
+  if (response.status === 401) {
+    sessionStorage.clear();
+    window.location.href = "/";
+    return;
+  }
+
   if (!response.ok) {
     throw new Error(data.error || `Error ${response.status}`);
   }

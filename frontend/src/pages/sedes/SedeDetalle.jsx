@@ -71,7 +71,7 @@ function SedeDetalle() {
   useEffect(() => {
     if (canchas.length === 0) return;
     canchas.forEach(c => {
-      apiFetch(`/feedback/canchas/${c.id}/rating`)
+      apiFetch(`/criticas/canchas/${c.id}/rating`)
         .then(data => setRatingsMap(prev => ({ ...prev, [c.id]: data.rating })))
         .catch(() => setRatingsMap(prev => ({ ...prev, [c.id]: 0 })));
     });

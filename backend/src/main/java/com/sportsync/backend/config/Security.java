@@ -29,7 +29,7 @@ public class Security {
                 )
                 .authorizeHttpRequests(auth -> auth
                         /*todos*/
-                        .requestMatchers("/usuarios/login", "/usuarios/register").permitAll()
+                        .requestMatchers("/usuarios/login", "/usuarios/register", "/error").permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/sedes/**", "/canchas/**", "/equipamiento", "/reservas/disponibilidad"

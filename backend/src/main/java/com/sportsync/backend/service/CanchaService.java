@@ -20,6 +20,13 @@ public class CanchaService {
         this.sedeService = sedeService;
     }
 
+    // ── Búsqueda pública por nombre y tipo ───────────────────────────────────
+
+    public List<Cancha> buscar(String nombre, Integer tipo) {
+        String patron = (nombre == null || nombre.isBlank()) ? "%" : ("%" + nombre.toLowerCase() + "%");
+        return repo.buscar(EstadoCancha.HABILITADA, patron, tipo);
+    }
+
     // ── Listado por sede ──────────────────────────────────────────────────────
 
     public List<Cancha> listarPorSede(Long sedeId) {

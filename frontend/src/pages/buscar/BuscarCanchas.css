@@ -1,0 +1,225 @@
+.buscar-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.buscar-page__main {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+  width: 100%;
+}
+
+.buscar-page__title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #18263d;
+  margin-bottom: 20px;
+}
+
+/* ── Filtros ── */
+.buscar-filtros {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.buscar-filtros__input,
+.buscar-filtros__select {
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.buscar-filtros__input { flex: 1; min-width: 180px; }
+.buscar-filtros__select { min-width: 160px; }
+
+.buscar-filtros__input:focus,
+.buscar-filtros__select:focus { border-color: var(--blue); }
+
+.buscar-filtros__btn {
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.buscar-filtros__btn:hover { background: var(--blue-dark); }
+
+.buscar-filtros__btn--gps {
+  background: #059669;
+}
+.buscar-filtros__btn--gps:hover { background: #047857; }
+
+.buscar-error  { color: #dc2626; font-size: 14px; margin-bottom: 8px; }
+
+/* ── 5 sedes cercanas ── */
+.buscar-cercanas-lista {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.buscar-cercanas-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1d4ed8;
+  width: 100%;
+  margin: 0 0 4px;
+}
+
+.buscar-cercana-chip {
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.buscar-cercana-badge {
+  display: inline-block;
+  margin-left: 8px;
+  background: #2563eb;
+  color: white;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Layout ── */
+.buscar-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* ── Mapa ── */
+.buscar-mapa {
+  height: 520px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Resultados ── */
+.buscar-resultados {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.buscar-estado { color: #6b7280; font-size: 14px; }
+.buscar-estado--error { color: #dc2626; }
+
+.buscar-sede-grupo {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+
+.buscar-sede-grupo__header {
+  background: #f1f5f9;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.buscar-sede-grupo__nombre {
+  font-size: 15px;
+  font-weight: 700;
+  color: #18263d;
+}
+
+.buscar-sede-grupo__dir {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.buscar-cancha-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  gap: 12px;
+}
+
+.buscar-cancha-card:last-child { border-bottom: none; }
+
+.buscar-cancha-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.buscar-cancha-card__nombre {
+  font-size: 14px;
+  font-weight: 600;
+  color: #18263d;
+}
+
+.buscar-cancha-card__tipo {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.buscar-cancha-card__precio {
+  font-size: 13px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.buscar-cancha-card__btn {
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.buscar-cancha-card__btn:hover { background: var(--blue-dark); }
+
+@media (max-width: 900px) {
+  .buscar-layout {
+    grid-template-columns: 1fr;
+  }
+  .buscar-mapa {
+    height: 320px;
+  }
+  .buscar-resultados {
+    max-height: none;
+  }
+}

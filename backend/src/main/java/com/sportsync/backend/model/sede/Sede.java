@@ -28,6 +28,12 @@ public class Sede {
     @Column(nullable = false)
     private boolean activa = true;
 
+    @Column
+    private Double latitud;
+
+    @Column
+    private Double longitud;
+
     @OneToMany(mappedBy = "sede", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Cancha> canchas;
 
@@ -41,6 +47,8 @@ public class Sede {
     public String getHoraApertura()  { return horaApertura; }
     public String getHoraCierre()    { return horaCierre; }
     public boolean isActiva()        { return activa; }
+    public Double getLatitud()       { return latitud; }
+    public Double getLongitud()      { return longitud; }
 
     @JsonIgnore
     public List<Cancha> getCanchas() { return canchas; }
@@ -51,5 +59,7 @@ public class Sede {
     public void setHoraApertura(String horaApertura)  { this.horaApertura = horaApertura; }
     public void setHoraCierre(String horaCierre)      { this.horaCierre = horaCierre; }
     public void setActiva(boolean activa)             { this.activa = activa; }
-    public void setCanchas(List<Cancha> canchas) { this.canchas = canchas; }
+    public void setLatitud(Double latitud)            { this.latitud = latitud; }
+    public void setLongitud(Double longitud)          { this.longitud = longitud; }
+    public void setCanchas(List<Cancha> canchas)      { this.canchas = canchas; }
 }

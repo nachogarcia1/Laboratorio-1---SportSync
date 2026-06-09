@@ -1,9 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import L from "leaflet";
 import { apiFetch } from "../../utils/api";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Admin.css";
+
+// Fix iconos Leaflet con Vite/bundlers
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl:       "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl:     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+/** Captura clicks del mapa y los pasa al padre. */
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({ click: (e) => onMapClick(e.latlng.lat, e.latlng.lng) });
+  return null;
+}
+
+/** Vuela suavemente el mapa a nuevas coordenadas cuando cambia `center`. */
+function MapFlyTo({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) map.flyTo(center, 15, { animate: true, duration: 0.8 });
+  }, [center, map]);
+  return null;
+}
 
 const NAV_ITEMS = [
   { id: "dashboard",  label: "Dashboard",           icon: "📊" },
@@ -25,7 +50,12 @@ function Admin() {
   const [suspenderAbierto, setSuspender]  = useState(false);
   const [modalSede,        setModalSede]        = useState(false);
   const [modalCancha,      setModalCancha]       = useState(false);
-  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", error: "" });
+  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "", direccionValidada: false });
+  const [geocodandoDir,    setGeocodandoDir]     = useState(false);
+  const [geocodandoBatch,  setGeocodandoBatch]   = useState(false);
+  const [geocodBatchMsg,   setGeocodBatchMsg]    = useState("");
+  const [sugerencias,      setSugerencias]       = useState([]);
+  const geocodDirTimer = useRef(null);
   const [formCancha,       setFormCancha]        = useState({ sedeId: "", nombre: "", tipo: "5", precioBase: "", error: "" });
   const [sedesDisponibles, setSedesDisponibles]  = useState([]);
   const [sedes,            setSedes]             = useState([]);
@@ -71,8 +101,15 @@ function Admin() {
     { label: "Ratings Pendientes", valor: 7,  color: "yellow", icon: "⭐" },
   ];
 
+  const FORM_SEDE_RESET = { nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "", direccionValidada: false };
+  const cerrarModalSede = () => { setModalSede(false); setFormSede(FORM_SEDE_RESET); setSugerencias([]); };
+
   const handleCrearSede = async (e) => {
     e.preventDefault();
+    if (!formSede.direccionValidada) {
+      setFormSede(f => ({ ...f, error: "Seleccioná una dirección real del listado de sugerencias o hacé clic en el mapa." }));
+      return;
+    }
     setFormSede(f => ({ ...f, error: "" }));
     try {
       await apiFetch("/sedes", {
@@ -81,14 +118,83 @@ function Admin() {
           nombre:       "Sede " + formSede.nombre,
           direccion:    formSede.direccion,
           horaApertura: formSede.horaApertura,
-          horaCierre:   formSede.horaCierre
+          horaCierre:   formSede.horaCierre,
+          latitud:      formSede.markerPos ? formSede.markerPos[0] : null,
+          longitud:     formSede.markerPos ? formSede.markerPos[1] : null,
         })
       });
       setModalSede(false);
-      setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", error: "" });
+      setFormSede(FORM_SEDE_RESET);
     } catch (err) {
       setFormSede(f => ({ ...f, error: err.message }));
     }
+  };
+
+  /** Geocodifica todas las sedes que no tienen ubicación */
+  const handleGeocodificarTodas = async () => {
+    setGeocodandoBatch(true);
+    setGeocodBatchMsg("");
+    try {
+      const data = await apiFetch("/sedes/admin/geocodificar-todas", { method: "POST" });
+      setGeocodBatchMsg(`✓ ${data.exitosas} geocodificadas, ${data.fallidas} fallidas de ${data.procesadas} sedes sin ubicación.`);
+      const sedesActualizadas = await apiFetch("/sedes/admin/todas");
+      setSedes(sedesActualizadas);
+    } catch (err) {
+      setGeocodBatchMsg("Error: " + err.message);
+    } finally {
+      setGeocodandoBatch(false);
+    }
+  };
+
+  /** Click en el mapa: reverse geocode → actualiza dirección */
+  const handleMapPickerClick = async (lat, lng) => {
+    if (geocodDirTimer.current) clearTimeout(geocodDirTimer.current);
+    setFormSede(f => ({ ...f, markerPos: [lat, lng], mapFlyTarget: null }));
+    setGeocodandoDir(true);
+    try {
+      const data = await apiFetch(`/geocoding/reverse?lat=${lat}&lng=${lng}`);
+      if (data.direccion) {
+        setFormSede(f => ({ ...f, direccion: data.direccion, direccionValidada: true, error: "" }));
+      }
+    } catch (err) {
+      console.error("Error reverse geocoding:", err);
+    } finally {
+      setGeocodandoDir(false);
+    }
+  };
+
+  /** Typing en dirección: debounce 400ms → busca sugerencias en Nominatim */
+  const handleDireccionChange = (e) => {
+    const val = e.target.value;
+    // Al escribir manualmente, la dirección deja de ser válida
+    setFormSede(f => ({ ...f, direccion: val, direccionValidada: false }));
+    setSugerencias([]);
+    if (geocodDirTimer.current) clearTimeout(geocodDirTimer.current);
+    if (!val.trim() || val.trim().length < 4) return;
+    geocodDirTimer.current = setTimeout(async () => {
+      setGeocodandoDir(true);
+      try {
+        const data = await apiFetch(`/geocoding/search?q=${encodeURIComponent(val)}`);
+        setSugerencias(data || []);
+      } catch (err) {
+        console.error("Error buscando sugerencias:", err);
+      } finally {
+        setGeocodandoDir(false);
+      }
+    }, 400);
+  };
+
+  /** El usuario elige una sugerencia del dropdown */
+  const handleElegirSugerencia = (sug) => {
+    setFormSede(f => ({
+      ...f,
+      direccion:         sug.displayName,
+      markerPos:         [sug.lat, sug.lng],
+      mapFlyTarget:      [sug.lat, sug.lng],
+      direccionValidada: true,
+      error:             "",
+    }));
+    setSugerencias([]);
   };
 
   const handleAbrirModalCancha = async () => {
@@ -447,7 +553,9 @@ function Admin() {
               <section className="admin-section">
                 <div className="admin-section__header">
                   <h2 className="admin-section__title">Gestión de Sedes</h2>
-                  <button className="admin-accion-btn admin-accion-btn--blue" onClick={() => setModalSede(true)}>+ Añadir Sede</button>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <button className="admin-accion-btn admin-accion-btn--blue" onClick={() => setModalSede(true)}>+ Añadir Sede</button>
+                  </div>
                 </div>
                 {sedes.length === 0 && <p className="admin-empty">No hay sedes registradas.</p>}
                 <div className="admin-lista">
@@ -694,11 +802,11 @@ function Admin() {
 
       {/* Modal Añadir Sede */}
       {modalSede && (
-        <div className="modal-overlay" onClick={() => setModalSede(false)}>
+        <div className="modal-overlay" onClick={() => cerrarModalSede()}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Añadir Sede</h2>
-              <button className="modal-close" onClick={() => setModalSede(false)}>✕</button>
+              <button className="modal-close" onClick={() => cerrarModalSede()}>✕</button>
             </div>
             <form className="modal-form" onSubmit={handleCrearSede}>
               <label>Nombre</label>
@@ -708,8 +816,50 @@ function Admin() {
                   onChange={e => setFormSede({ ...formSede, nombre: e.target.value })} />
               </div>
               <label>Dirección</label>
-              <input type="text" placeholder="Ej: Av. Santa Fe 1234" value={formSede.direccion} maxLength={150} required
-                onChange={e => setFormSede({ ...formSede, direccion: e.target.value })} />
+              <div style={{ position: "relative" }}>
+                <input type="text" placeholder="Escribí para buscar una dirección real..." value={formSede.direccion} maxLength={255}
+                  onChange={handleDireccionChange}
+                  onBlur={() => setTimeout(() => setSugerencias([]), 150)}
+                  style={{ width: "100%", borderColor: formSede.direccion && !formSede.direccionValidada ? "#f59e0b" : undefined }}
+                />
+                {formSede.direccion && !formSede.direccionValidada && !geocodandoDir && sugerencias.length === 0 && (
+                  <p style={{ fontSize: "0.78rem", color: "#b45309", margin: "2px 0 0" }}>
+                    ⚠️ Elegí una opción de la lista o hacé clic en el mapa.
+                  </p>
+                )}
+                {formSede.direccionValidada && (
+                  <p style={{ fontSize: "0.78rem", color: "#16a34a", margin: "2px 0 0" }}>✓ Dirección confirmada</p>
+                )}
+                {geocodandoDir && <p className="modal-map-loading">Buscando...</p>}
+                {sugerencias.length > 0 && (
+                  <ul className="geocod-dropdown">
+                    {sugerencias.map((s, i) => (
+                      <li key={i} className="geocod-dropdown__item" onMouseDown={() => handleElegirSugerencia(s)}>
+                        {s.displayName}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <label>Ubicación en el mapa</label>
+              <p className="modal-map-hint">Escribí la dirección y elegí una sugerencia, o hacé clic directamente en el mapa.</p>
+              <div className="modal-map-picker">
+                <MapContainer
+                  key="sede-map-picker"
+                  center={[-34.6037, -58.3816]}
+                  zoom={12}
+                  style={{ height: "100%", width: "100%" }}
+                  scrollWheelZoom={false}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  <MapClickHandler onMapClick={handleMapPickerClick} />
+                  <MapFlyTo center={formSede.mapFlyTarget} />
+                  {formSede.markerPos && <Marker position={formSede.markerPos} />}
+                </MapContainer>
+              </div>
               <label>Hora de apertura</label>
               <input type="time" value={formSede.horaApertura} required
                 onChange={e => setFormSede({ ...formSede, horaApertura: e.target.value })} />
@@ -718,8 +868,8 @@ function Admin() {
                 onChange={e => setFormSede({ ...formSede, horaCierre: e.target.value })} />
               {formSede.error && <p className="form__error">{formSede.error}</p>}
               <div className="modal-actions">
-                <button type="button" className="modal-btn-cancel" onClick={() => setModalSede(false)}>Cancelar</button>
-                <button type="submit" className="modal-btn-save">Crear Sede</button>
+                <button type="button" className="modal-btn-cancel" onClick={() => cerrarModalSede()}>Cancelar</button>
+                <button type="submit" className="modal-btn-save" disabled={!formSede.nombre || !formSede.direccionValidada}>Crear Sede</button>
               </div>
             </form>
           </div>
