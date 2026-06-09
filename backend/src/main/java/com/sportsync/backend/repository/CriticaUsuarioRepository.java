@@ -9,7 +9,8 @@ import java.util.List;
 
 public interface CriticaUsuarioRepository extends JpaRepository<CriticaUsuario, Long> {
 
-    List<CriticaUsuario> findByUsuarioId(Long usuarioId);
+    List<CriticaUsuario> findByUsuario_Id(Long usuarioId);
+    boolean existsByReserva_Id(Long reservaId);
 
     @Query("SELECT AVG(c.nota) FROM CriticaUsuario c WHERE c.usuario.id = :usuarioId")
     Double calcularRating(@Param("usuarioId") Long usuarioId);

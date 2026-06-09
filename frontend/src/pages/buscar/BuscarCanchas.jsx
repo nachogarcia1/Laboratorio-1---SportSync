@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -15,24 +15,28 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+// Icono azul para sede seleccionada / más cercana
 const iconoCercano = new L.Icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
 });
 
+// Icono verde para sede normal
 const iconoNormal = new L.Icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
 });
 
+// Icono rojo para usuario
 const iconoUsuario = new L.Icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
 });
 
+// Componente auxiliar para re-centrar el mapa cuando cambian los resultados
 function RecenterMap({ center }) {
   const map = useMap();
   useEffect(() => {
@@ -54,67 +58,52 @@ function distanciaKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Centro por defecto: Buenos Aires
 const DEFAULT_CENTER = [-34.6037, -58.3816];
 
 export default function BuscarCanchas() {
   const navigate = useNavigate();
 
-  const [nombre,        setNombre]        = useState("");
-  const [tipo,          setTipo]          = useState("");
-  const [todasCanchas,  setTodasCanchas]  = useState([]); // todas las canchas habilitadas
-  const [sedes,         setSedes]         = useState([]); // todas las sedes con coordenadas
-  const [loading,       setLoading]       = useState(false);
-  const [error,         setError]         = useState("");
-  const [userPos,       setUserPos]       = useState(null);
-  const [gpsError,      setGpsError]      = useState("");
-  const [mapCenter,     setMapCenter]     = useState(DEFAULT_CENTER);
-  const [sedesCercanas, setSedesCercanas] = useState([]); // top 5 más cercanas
+  const [nombre,     setNombre]     = useState("");
+  const [tipo,       setTipo]       = useState("");
+  const [canchas,    setCanchas]    = useState([]);
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState("");
+  const [sedes,      setSedes]      = useState([]); // con lat/lng
+  const [userPos,    setUserPos]    = useState(null); // { lat, lng }
+  const [gpsError,   setGpsError]   = useState("");
+  const [mapCenter,  setMapCenter]  = useState(DEFAULT_CENTER);
+  const [sedeCercana, setSedeCercana] = useState(null);
 
-  // Carga inicial: todas las sedes y todas las canchas habilitadas
+  // Cargar todas las sedes al inicio para los marcadores del mapa
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      apiFetch("/sedes"),
-      apiFetch("/canchas/buscar"),
-    ])
-      .then(([sedesData, canchasData]) => {
-        setSedes(sedesData.filter(s => s.latitud && s.longitud));
-        setTodasCanchas(canchasData);
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+    apiFetch("/sedes")
+      .then(data => setSedes(data.filter(s => s.latitud && s.longitud)))
+      .catch(console.error);
+    // Cargar todas las canchas habilitadas al inicio
+    buscar();
   }, []);
 
-  // ── Filtrado client-side ──────────────────────────────────────────────────
-
-  // Canchas filtradas por tipo (si está seleccionado)
-  const canchasFiltradas = tipo
-    ? todasCanchas.filter(c => String(c.tipo) === tipo)
-    : todasCanchas;
-
-  // Agrupar canchas filtradas por sede
-  const canchasPorSede = canchasFiltradas.reduce((acc, c) => {
-    const sedeId = c.sede?.id;
-    if (!sedeId) return acc;
-    if (!acc[sedeId]) acc[sedeId] = { sede: c.sede, canchas: [] };
-    acc[sedeId].canchas.push(c);
-    return acc;
-  }, {});
-
-  // Sedes con resultados (tienen canchas del tipo seleccionado)
-  const sedesConResultados = new Set(Object.keys(canchasPorSede).map(Number));
-
-  // Filtrar por nombre de sede
-  const gruposFiltrados = Object.values(canchasPorSede).filter(({ sede }) => {
-    if (!nombre.trim()) return true;
-    return sede?.nombre?.toLowerCase().includes(nombre.trim().toLowerCase());
-  });
-
-  // ── GPS: 5 sedes más cercanas ─────────────────────────────────────────────
+  async function buscar(e) {
+    if (e) e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (nombre.trim()) params.append("nombre", nombre.trim());
+      if (tipo)          params.append("tipo", tipo);
+      const qs = params.toString();
+      const data = await apiFetch(`/canchas/buscar${qs ? "?" + qs : ""}`);
+      setCanchas(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function usarGPS() {
     setGpsError("");
-    setSedesCercanas([]);
     if (!navigator.geolocation) {
       setGpsError("Tu navegador no soporta geolocalización.");
       return;
@@ -125,34 +114,47 @@ export default function BuscarCanchas() {
         setUserPos({ lat, lng });
         setMapCenter([lat, lng]);
 
+        // Encontrar la sede más cercana que tenga coordenadas
         if (sedes.length > 0) {
-          const conDist = sedes
-            .map(s => ({ ...s, distancia: distanciaKm(lat, lng, s.latitud, s.longitud) }))
-            .sort((a, b) => a.distancia - b.distancia)
-            .slice(0, 5); // top 5
-          setSedesCercanas(conDist);
-          // Centrar el mapa en la más cercana
-          setMapCenter([conDist[0].latitud, conDist[0].longitud]);
+          const sedesConDist = sedes.map(s => ({
+            ...s,
+            distancia: distanciaKm(lat, lng, s.latitud, s.longitud),
+          }));
+          sedesConDist.sort((a, b) => a.distancia - b.distancia);
+          const cercana = sedesConDist[0];
+          setSedeCercana(cercana);
+          setMapCenter([cercana.latitud, cercana.longitud]);
         }
       },
       () => setGpsError("No se pudo obtener tu ubicación. Verificá los permisos del navegador.")
     );
   }
 
-  const idsCercanas = new Set(sedesCercanas.map(s => s.id));
+  // Agrupar canchas por sede para la lista
+  const canchasPorSede = canchas.reduce((acc, c) => {
+    const sedeId = c.sede?.id;
+    if (!acc[sedeId]) acc[sedeId] = { sede: c.sede, canchas: [] };
+    acc[sedeId].canchas.push(c);
+    return acc;
+  }, {});
+
+  // Sedes de los resultados que tienen coordenadas (para mostrar solo esas en el mapa)
+  const sedesResultado = sedes.filter(s =>
+    Object.keys(canchasPorSede).map(Number).includes(s.id)
+  );
 
   return (
     <div className="buscar-page">
       <NavbarPrivate />
       <main className="buscar-page__main">
-        <h1 className="buscar-page__title">Buscá tu cancha</h1>
+        <h1 className="buscar-page__title">Buscar Canchas</h1>
 
         {/* ── Filtros ── */}
-        <form className="buscar-filtros" onSubmit={e => e.preventDefault()}>
+        <form className="buscar-filtros" onSubmit={buscar}>
           <input
             className="buscar-filtros__input"
             type="text"
-            placeholder="Nombre de sede..."
+            placeholder="Nombre de cancha..."
             value={nombre}
             onChange={e => setNombre(e.target.value)}
           />
@@ -166,23 +168,17 @@ export default function BuscarCanchas() {
             <option value="7">Fútbol 7</option>
             <option value="11">Fútbol 11</option>
           </select>
+          <button type="submit" className="buscar-filtros__btn">Buscar</button>
           <button type="button" className="buscar-filtros__btn buscar-filtros__btn--gps" onClick={usarGPS}>
             📍 Cerca de mí
           </button>
         </form>
 
         {gpsError && <p className="buscar-error">{gpsError}</p>}
-
-        {/* Resumen de 5 más cercanas */}
-        {sedesCercanas.length > 0 && (
-          <div className="buscar-cercanas-lista">
-            <p className="buscar-cercanas-titulo">📍 Las 5 sedes más cercanas a vos:</p>
-            {sedesCercanas.map((s, i) => (
-              <span key={s.id} className="buscar-cercana-chip">
-                {i + 1}. {s.nombre} — {s.distancia.toFixed(1)} km
-              </span>
-            ))}
-          </div>
+        {sedeCercana && (
+          <p className="buscar-cercana">
+            📍 Sede más cercana: <strong>{sedeCercana.nombre}</strong> — {sedeCercana.distancia?.toFixed(1)} km
+          </p>
         )}
 
         {/* ── Layout: mapa + resultados ── */}
@@ -208,27 +204,21 @@ export default function BuscarCanchas() {
                 </Marker>
               )}
 
-              {/* Marcadores de todas las sedes con coordenadas */}
-              {sedes.map(sede => (
+              {/* Marcadores de sedes */}
+              {sedesResultado.map(sede => (
                 <Marker
                   key={sede.id}
                   position={[sede.latitud, sede.longitud]}
-                  icon={idsCercanas.has(sede.id) ? iconoCercano : iconoNormal}
+                  icon={sedeCercana?.id === sede.id ? iconoCercano : iconoNormal}
                 >
                   <Popup>
                     <strong>{sede.nombre}</strong><br />
                     {sede.direccion}<br />
-                    {idsCercanas.has(sede.id) && (() => {
-                      const sc = sedesCercanas.find(s => s.id === sede.id);
-                      return <span style={{ color: "#2563eb" }}>📍 {sc?.distancia?.toFixed(1)} km de vos</span>;
-                    })()}
-                    <br />
-                    <button
-                      style={{ marginTop: "6px", padding: "4px 10px", cursor: "pointer", background: "#16a34a", color: "#fff", border: "none", borderRadius: "4px", fontSize: "0.8rem" }}
-                      onClick={() => navigate(`/sedes/${sede.id}`)}
-                    >
-                      Ver sede →
-                    </button>
+                    {sedeCercana?.id === sede.id && (
+                      <span style={{ color: "#2563eb" }}>
+                        📍 {sedeCercana.distancia?.toFixed(1)} km de vos
+                      </span>
+                    )}
                   </Popup>
                 </Marker>
               ))}
@@ -237,24 +227,16 @@ export default function BuscarCanchas() {
 
           {/* Lista de resultados */}
           <div className="buscar-resultados">
-            {loading && <p className="buscar-estado">Cargando...</p>}
+            {loading && <p className="buscar-estado">Buscando...</p>}
             {error   && <p className="buscar-estado buscar-estado--error">{error}</p>}
-            {!loading && gruposFiltrados.length === 0 && (
-              <p className="buscar-estado">No se encontraron sedes con esos filtros.</p>
+            {!loading && canchas.length === 0 && (
+              <p className="buscar-estado">No se encontraron canchas con esos filtros.</p>
             )}
 
-            {gruposFiltrados.map(({ sede, canchas: cs }) => (
+            {Object.values(canchasPorSede).map(({ sede, canchas: cs }) => (
               <div key={sede?.id} className="buscar-sede-grupo">
                 <div className="buscar-sede-grupo__header">
-                  <span className="buscar-sede-grupo__nombre">
-                    {idsCercanas.has(sede?.id) && "📍 "}
-                    {sede?.nombre}
-                    {idsCercanas.has(sede?.id) && (
-                      <span className="buscar-cercana-badge">
-                        {sedesCercanas.find(s => s.id === sede.id)?.distancia?.toFixed(1)} km
-                      </span>
-                    )}
-                  </span>
+                  <span className="buscar-sede-grupo__nombre">{sede?.nombre}</span>
                   <span className="buscar-sede-grupo__dir">📍 {sede?.direccion}</span>
                 </div>
                 {cs.map(c => (

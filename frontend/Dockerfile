@@ -1,14 +1,14 @@
-FROM node:20
+FROM node:22
 
-RUN npm install -g pnpm
+RUN corepack enable pnpm
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json ./
 RUN pnpm install
 
 COPY . .
 
 EXPOSE 5173
 
-CMD ["pnpm", "run", "dev"]
+CMD ["pnpm", "dev", "--", "--host", "0.0.0.0"]

@@ -22,14 +22,10 @@ function Register() {
     if (form.nombre.trim().length < 6) {
       setError("El nombre de usuario debe tener al menos 6 caracteres"); return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      setError("Ingresá un correo electrónico válido"); return;
-    }
     if (form.dni.length < 7) {
       setError("El DNI debe tener al menos 7 dígitos"); return;
     }
-    if (form.telefono && form.telefono.length < 8 ) {
+    if (form.telefono && form.telefono.length < 8) {
       setError("El teléfono debe tener 8 dígitos"); return;
     }
     if (form.password !== form.confirmarPassword) {

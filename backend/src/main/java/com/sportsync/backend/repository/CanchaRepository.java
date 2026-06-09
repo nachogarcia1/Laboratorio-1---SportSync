@@ -14,7 +14,17 @@ public interface CanchaRepository extends JpaRepository<Cancha, Long> {
     List<Cancha> findBySedeIdAndTipo(Long sedeId, int tipo);
     List<Cancha> findBySedeIdAndTipoAndEstado(Long sedeId, int tipo, EstadoCancha estado);
 
-    // Búsqueda pública: :nombre viene pre-calculado ("%" o "%texto%"), nunca null
-    @Query("SELECT c FROM Cancha c WHERE c.estado = :estado AND LOWER(c.nombre) LIKE :nombre AND (:tipo IS NULL OR c.tipo = :tipo)")
-    List<Cancha> buscar(@Param("estado") EstadoCancha estado, @Param("nombre") String nombre, @Param("tipo") Integer tipo);
+    // Búsqueda combinada: nombre de cancha (contiene) + tipo opcional, solo HABILITADAS
+    // :nombre debe venir pre-calculado como "%" (todos) o "%texto%" (filtrado) — nunca null
+    @Query("""
+        SELECT c FROM Cancha c
+        WHERE c.estado = :estado
+        AND LOWER(c.nombre) LIKE :nombre
+        AND (:tipo IS NULL OR c.tipo = :tipo)
+    """)
+    List<Cancha> buscar(
+            @Param("estado") EstadoCancha estado,
+            @Param("nombre") String nombre,
+            @Param("tipo")   Integer tipo
+    );
 }

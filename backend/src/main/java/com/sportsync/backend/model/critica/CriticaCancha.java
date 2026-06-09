@@ -5,6 +5,9 @@ import com.sportsync.backend.model.reserva.Reserva;
 import com.sportsync.backend.model.cancha.Cancha;
 import com.sportsync.backend.model.entidades.Usuario;
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,6 +19,7 @@ public class CriticaCancha {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
@@ -36,11 +40,13 @@ public class CriticaCancha {
     @Column(nullable = false)
     private int notaServicios;
 
-    @Column
+    @Column(length = 255)
     private String comentario;
 
     @Column(nullable = false)
     private LocalDateTime fecha = LocalDateTime.now();
+
+
 
     public CriticaCancha() {}
 

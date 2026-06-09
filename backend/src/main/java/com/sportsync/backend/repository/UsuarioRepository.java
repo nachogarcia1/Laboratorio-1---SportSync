@@ -1,5 +1,6 @@
 package com.sportsync.backend.repository;
 
+import com.sportsync.backend.model.entidades.Rol;
 import com.sportsync.backend.model.entidades.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
@@ -12,4 +13,5 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     boolean existsByEmail(String email);
     boolean existsByDni(String dni);
     List<Usuario> findByEstado(EstadoUsuario estado);
+    List<Usuario> findByRolNot(Rol rol);
 }
