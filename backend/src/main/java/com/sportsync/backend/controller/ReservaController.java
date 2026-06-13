@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +42,8 @@ public class ReservaController {
             return ResponseEntity.ok(service.crearReserva(req));
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -74,5 +77,23 @@ public class ReservaController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // GET /reservas/precio-preview?canchaId=1&hora=19:00
+    @GetMapping("/precio-preview")
+    public ResponseEntity<?> precioPreview(
+            @RequestParam Long canchaId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora) {
+        try {
+            return ResponseEntity.ok(service.calcularPrecioPreview(canchaId, hora));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // GET /reservas/descuentos?canchaId=1
+    @GetMapping("/descuentos")
+    public ResponseEntity<?> descuentos(@RequestParam Long canchaId) {
+        return ResponseEntity.ok(service.obtenerDescuentosCancha(canchaId));
     }
 }

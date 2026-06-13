@@ -13,6 +13,7 @@ import MisReservas from "./pages/reservas/MisReservas";
 import CalificarExperiencia from "./pages/calificar/CalificarExperiencia";
 import MisCalificaciones from "./pages/calificaciones/MisCalificaciones";
 import BuscarCanchas from "./pages/buscar/BuscarCanchas";
+import VerificarEmail from "./pages/verificar/VerificarEmail";
 
 function App() {
   return (
@@ -28,6 +29,12 @@ function App() {
         <Route path="/register" element={
           <PublicRoute>
             <Register />
+          </PublicRoute>
+        } />
+
+        <Route path="/verificar" element={
+          <PublicRoute>
+            <VerificarEmail />
           </PublicRoute>
         } />
 

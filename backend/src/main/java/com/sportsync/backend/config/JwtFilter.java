@@ -56,7 +56,15 @@ public class JwtFilter extends OncePerRequestFilter {
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
 
-            if (usuario != null && (usuario.getEstado() == null || usuario.getEstado() == EstadoUsuario.ACTIVO)) {
+            if (usuario == null) {
+                // Token válido pero usuario eliminado de la DB → forzar re-login
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Sesión inválida. Por favor iniciá sesión de nuevo.\"}");
+                return;
+            }
+
+            if (usuario.getEstado() == null || usuario.getEstado() == EstadoUsuario.ACTIVO) {
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
                                 email,

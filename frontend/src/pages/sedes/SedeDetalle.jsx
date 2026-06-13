@@ -8,7 +8,6 @@ import "./SedeDetalle.css";
 const DIAS  = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-
 function horaStr(h) {
   return `${String(h).padStart(2, "0")}:00`;
 }
@@ -49,6 +48,9 @@ function SedeDetalle() {
   const [iluminacion,   setIluminacion]   = useState(false);
   const [bookingStatus, setBookingStatus] = useState(null);
   const [bookingError,  setBookingError]  = useState("");
+  const [descuentosMap,  setDescuentosMap]  = useState({});
+  const [precioModal,    setPrecioModal]    = useState(null);
+  const [loadingPrecio,  setLoadingPrecio]  = useState(false);
 
   const usuario = (() => {
     try { return JSON.parse(sessionStorage.getItem("usuario")); }
@@ -78,6 +80,19 @@ function SedeDetalle() {
       apiFetch(`/criticas/canchas/${c.id}/rating`)
         .then(data => setRatingsMap(prev => ({ ...prev, [c.id]: data.rating })))
         .catch(() => setRatingsMap(prev => ({ ...prev, [c.id]: 0 })));
+    });
+  }, [canchas]);
+
+  useEffect(() => {
+    if (canchas.length === 0) return;
+    canchas.forEach(c => {
+      apiFetch(`/reservas/descuentos?canchaId=${c.id}`)
+        .then(data => {
+          const mapa = {};
+          data.forEach(d => { mapa[d.hora] = d.descuentoPorcentaje; });
+          setDescuentosMap(prev => ({ ...prev, [c.id]: mapa }));
+        })
+        .catch(() => {});
     });
   }, [canchas]);
 
@@ -138,11 +153,8 @@ function SedeDetalle() {
     return slots;
   }
 
-  function getBadge(horaInicio) {
-    const h = parseInt(horaInicio.split(":")[0], 10);
-    if (usuario?.acreditado && h >= 18) return "socio";
-    if (h >= 18 && h <= 20) return "popular";
-    return "normal";
+  function getDescuentoSlot(canchaId, hora) {
+    return descuentosMap[canchaId]?.[hora] || 0;
   }
 
   function getGrupoRating(canchasGrupo) {
@@ -176,6 +188,20 @@ function SedeDetalle() {
     setBookingStatus(null);
     setBookingError("");
     setIluminacion(false);
+    setPrecioModal(null);
+  }
+
+  async function handleAbrirModal(canchaId, tipo, horaInicio, horaFin) {
+    setModal({ canchaId, tipo, horaInicio, horaFin });
+    setPrecioModal(null);
+    setLoadingPrecio(true);
+    try {
+      const data = await apiFetch(`/reservas/precio-preview?canchaId=${canchaId}&hora=${horaInicio}`);
+      setPrecioModal(data);
+    } catch {
+    } finally {
+      setLoadingPrecio(false);
+    }
   }
 
   async function handleReservar() {
@@ -283,18 +309,18 @@ function SedeDetalle() {
                           ) : (
                             <div className="cancha-card__turnos">
                               {slots.map(({ ini, fin, canchaId }) => {
-                                const badge = getBadge(ini);
+                                const descuento = getDescuentoSlot(canchaId, ini);
                                 return (
                                   <div key={ini} className="turno-row">
                                     <span className="turno-hora">{ini}</span>
-                                    <span className={`turno-badge turno-badge--${badge}`}>
-                                      {badge === "normal"  && fin}
-                                      {badge === "popular" && "Turno Popular +5% de dto."}
-                                      {badge === "socio"   && "Descuento Socio -10%"}
-                                    </span>
+                                    {descuento > 0 ? (
+                                      <span className="turno-badge turno-badge--descuento">🏷️ -{descuento}% dto.</span>
+                                    ) : (
+                                      <span className="turno-badge turno-badge--normal">{fin}</span>
+                                    )}
                                     <button
                                       className="turno-reservar-btn"
-                                      onClick={() => setModal({ canchaId, tipo: tipoNum, horaInicio: ini, horaFin: fin })}
+                                      onClick={() => handleAbrirModal(canchaId, tipoNum, ini, fin)}
                                     >
                                       Reservar
                                     </button>
@@ -342,6 +368,26 @@ function SedeDetalle() {
                     <p><strong>Cancha:</strong> Fútbol {modal.tipo} — {sede?.nombre}</p>
                     <p><strong>Fecha:</strong> {fechaFormateada}</p>
                     <p><strong>Horario:</strong> {modal.horaInicio} - {modal.horaFin} hs</p>
+
+                    {loadingPrecio && <p className="modal-precio-cargando">Calculando precio...</p>}
+
+                    {precioModal && (
+                      <div className="modal-precio">
+                        {precioModal.descuentoPorcentaje > 0 ? (
+                          <>
+                            <p>Precio cancha: <span className="precio-tachado">${precioModal.precioBase.toLocaleString("es-AR")}</span></p>
+                            <p className="modal-precio__descuento">Descuento -{precioModal.descuentoPorcentaje}%: -${(precioModal.precioBase - precioModal.precioFinal).toLocaleString("es-AR")}</p>
+                            <p>Subtotal cancha: <strong>${precioModal.precioFinal.toLocaleString("es-AR")}</strong></p>
+                          </>
+                        ) : (
+                          <p>Precio cancha: <strong>${precioModal.precioFinal.toLocaleString("es-AR")}</strong></p>
+                        )}
+                        {iluminacion && <p className="modal-precio__extra">Iluminación: +$500</p>}
+                        <p className="modal-precio__total">
+                          Total: <strong>${(precioModal.precioFinal + (iluminacion ? 500 : 0)).toLocaleString("es-AR")}</strong>
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <label className="modal-iluminacion">
                     <input

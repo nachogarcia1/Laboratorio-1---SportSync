@@ -14,17 +14,40 @@ import java.util.Map;
 public class UsuarioController {
 
     private final UsuarioService service;
+    private final com.sportsync.backend.service.VerificacionService verificacionService;
+    private final com.sportsync.backend.service.GoogleTokenVerifier googleTokenVerifier;
     private final com.sportsync.backend.config.JwtUtil jwtUtil;
 
-    public UsuarioController(UsuarioService service, com.sportsync.backend.config.JwtUtil jwtUtil) {
+    public UsuarioController(UsuarioService service,
+                             com.sportsync.backend.service.VerificacionService verificacionService,
+                             com.sportsync.backend.service.GoogleTokenVerifier googleTokenVerifier,
+                             com.sportsync.backend.config.JwtUtil jwtUtil) {
         this.service = service;
+        this.verificacionService = verificacionService;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.jwtUtil = jwtUtil;
+    }
+
+    private Map<String, Object> sesionDe(Usuario usuario) {
+        return Map.of(
+                "token",  jwtUtil.generarToken(usuario.getEmail(), usuario.getRol().name()),
+                "id",     usuario.getId(),
+                "nombre", usuario.getNombre(),
+                "email",  usuario.getEmail(),
+                "rol",    usuario.getRol()
+        );
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> registrar(@RequestBody Usuario usuario) {
         try {
-            return ResponseEntity.ok(service.registrar(usuario));
+            Usuario creado = service.registrar(usuario);
+            verificacionService.generarYEnviar(creado);
+            return ResponseEntity.ok(Map.of(
+                    "mensaje", "Te enviamos un código de verificación a tu email.",
+                    "email",   creado.getEmail(),
+                    "requiereVerificacion", true
+            ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -34,15 +57,51 @@ public class UsuarioController {
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
         try {
             Usuario usuario = service.login(body.get("email"), body.get("password"));
-            String token = jwtUtil.generarToken(usuario.getEmail(), usuario.getRol().name());
-            return ResponseEntity.ok(Map.of(
-                    "token",  token,
-                    "id",     usuario.getId(),
-                    "nombre", usuario.getNombre(),
-                    "email",  usuario.getEmail(),
-                    "rol",    usuario.getRol()
+            return ResponseEntity.ok(sesionDe(usuario));
+        } catch (com.sportsync.backend.exception.CuentaNoVerificadaException e) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", e.getMessage(),
+                    "requiereVerificacion", true,
+                    "email", body.get("email")
             ));
         } catch (Exception e) {
+            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/verificar")
+    public ResponseEntity<?> verificar(@RequestBody Map<String, String> body) {
+        try {
+            Usuario usuario = verificacionService.verificar(body.get("email"), body.get("codigo"));
+            return ResponseEntity.ok(sesionDe(usuario));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reenviar-codigo")
+    public ResponseEntity<?> reenviarCodigo(@RequestBody Map<String, String> body) {
+        try {
+            verificacionService.reenviar(body.get("email"));
+            return ResponseEntity.ok(Map.of("mensaje", "Te reenviamos el código a tu email."));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/oauth/google")
+    public ResponseEntity<?> oauthGoogle(@RequestBody Map<String, String> body) {
+        try {
+            var g = googleTokenVerifier.verificar(body.get("idToken"));
+            if (!g.emailVerified())
+                return ResponseEntity.badRequest().body(Map.of("error", "Tu email de Google no está verificado."));
+            Usuario usuario = service.loginConGoogle(g.email(), g.nombre());
+            return ResponseEntity.ok(sesionDe(usuario));
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
         }
     }

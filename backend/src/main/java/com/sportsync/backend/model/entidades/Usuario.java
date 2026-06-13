@@ -20,7 +20,8 @@ public class Usuario {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false, unique = true)
+    // Nullable: los usuarios de Google OAuth no tienen DNI al darse de alta.
+    @Column(unique = true)
     private String dni;
 
     @Column
@@ -37,8 +38,14 @@ public class Usuario {
     @Column(nullable = false)
     private boolean activo = true;
 
-    //@Column(nullable = false)
-    //private boolean verificado = false;
+    /** true una vez que el usuario verificó su email (o se autenticó con Google). */
+    @Column(nullable = false)
+    private boolean verificado = false;
+
+    /** Cómo se dio de alta la cuenta (LOCAL = email+código, GOOGLE = OAuth). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
 
     public Usuario() {}
 
@@ -50,6 +57,8 @@ public class Usuario {
     public String getTelefono()   { return telefono; }
     public Rol getRol()           { return rol; }
     public EstadoUsuario getEstado() { return estado; }
+    public boolean isVerificado()    { return verificado; }
+    public AuthProvider getAuthProvider() { return authProvider; }
     //public boolean isActivo()   { return activo; }
 
     public void setNombre(String nombre)          { this.nombre = nombre; }
@@ -59,5 +68,7 @@ public class Usuario {
     public void setTelefono(String telefono)      { this.telefono = telefono; }
     public void setRol(Rol rol)                   { this.rol = rol; }
     public void setEstado(EstadoUsuario estado)   { this.estado = estado; }
+    public void setVerificado(boolean verificado) { this.verificado = verificado; }
+    public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
     //public void setActivo(boolean activo)       { this.activo = activo; }
 }

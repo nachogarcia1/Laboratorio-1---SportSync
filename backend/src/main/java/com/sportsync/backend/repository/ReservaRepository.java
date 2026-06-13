@@ -48,4 +48,17 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
             @Param("horaInicio") LocalTime horaInicio,
             @Param("horaFin") LocalTime horaFin
     );
+
+    @Query("""
+    SELECT r.horaInicio, COUNT(r)
+    FROM Reserva r
+    WHERE r.cancha.id = :canchaId
+    AND r.fecha >= :desde
+    AND r.estado <> com.sportsync.backend.model.admin.EstadoReserva.CANCELADA
+    GROUP BY r.horaInicio
+""")
+    List<Object[]> contarReservasPorSlot(
+            @Param("canchaId") Long canchaId,
+            @Param("desde") LocalDate desde
+    );
 }

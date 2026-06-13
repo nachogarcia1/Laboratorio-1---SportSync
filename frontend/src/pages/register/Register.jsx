@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import NavbarPublic from "../../components/navbar/NavbarPublic";
 import Footer from "../../components/footer/Footer";
+import GoogleLoginButton from "../../components/GoogleLoginButton";
 import "./Register.css";
 
 function Register() {
   const navigate = useNavigate();
   const [error,  setError]  = useState("");
-  const [exito,  setExito]  = useState(false);
 
   const [form, setForm] = useState({
     nombre: "", email: "", password: "", confirmarPassword: "",
@@ -46,8 +46,8 @@ function Register() {
           password: form.password, dni: form.dni, telefono: form.telefono
         })
       });
-      setExito(true);
-      setTimeout(() => navigate("/"), 2000);
+      // Cuenta creada → ir a verificar el email con el código
+      navigate("/verificar", { state: { email: form.email } });
     } catch (err) {
       setError(err.message);
     }
@@ -69,18 +69,7 @@ function Register() {
             </button>
           </div>
 
-          {exito ? (
-            <div style={{
-              textAlign: "center", padding: "2rem",
-              color: "#16a34a", background: "#f0fdf4",
-              borderRadius: "8px", margin: "1rem 0"
-            }}>
-              <p style={{ fontSize: "2rem" }}>✓</p>
-              <p style={{ fontWeight: 600 }}>¡Cuenta creada correctamente!</p>
-              <p style={{ fontSize: "0.9rem", color: "#6b7280" }}>Redirigiendo al inicio de sesión...</p>
-            </div>
-          ) : (
-            <form className="register-form" onSubmit={handleRegister}>
+          <form className="register-form" onSubmit={handleRegister}>
               <label>Nombre de usuario</label>
               <input
                 type="text" placeholder="Tu usuario"
@@ -139,19 +128,15 @@ function Register() {
 
               <div className="register-form__separator">o</div>
 
-              <button type="button" className="register-form__social-btn register-form__social-btn--google">
-                G Registrarse con Google
-              </button>
-              <button type="button" className="register-form__social-btn register-form__social-btn--facebook">
-                f Registrarse con Facebook
-              </button>
+              <GoogleLoginButton onError={setError} />
 
-              <div className="register-form__bottom-text">
+            
+
+              <div style={{ marginTop: '40px' }} className="register-form__bottom-text">
                 ¿Ya tienes una cuenta?{" "}
                 <span onClick={() => navigate("/")}>Inicia Sesión aquí</span>
               </div>
             </form>
-          )}
         </div>
       </main>
       <Footer />

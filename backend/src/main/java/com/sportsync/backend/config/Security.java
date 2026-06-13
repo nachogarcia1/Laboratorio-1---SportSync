@@ -29,7 +29,13 @@ public class Security {
                 )
                 .authorizeHttpRequests(auth -> auth
                         /*todos*/
-                        .requestMatchers("/usuarios/login", "/usuarios/register").permitAll()
+                        .requestMatchers("/usuarios/login", "/usuarios/register",
+                                "/usuarios/verificar", "/usuarios/reenviar-codigo",
+                                "/usuarios/oauth/google", "/error").permitAll()
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.GET,
+                                "/canchas/buscar"
+                        ).permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/canchas/buscar"
@@ -77,6 +83,7 @@ public class Security {
                                 org.springframework.http.HttpMethod.GET,
                                 "/reservas/usuario/*/sin-calificar-admin"
                         ).hasRole("ADMIN")
+                        .requestMatchers("/precios/**").hasRole("ADMIN")
 
                         /*cualquier otra autenticados*/
                         .anyRequest().authenticated()

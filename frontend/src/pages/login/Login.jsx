@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import NavbarPublic from "../../components/navbar/NavbarPublic";
 import Footer from "../../components/footer/Footer";
+import GoogleLoginButton from "../../components/GoogleLoginButton";
 import "./Login.css";
 
 function Login() {
@@ -40,6 +41,11 @@ function Login() {
       }));
       navigate("/home");
     } catch (err) {
+      // Cuenta sin verificar → mandar a la pestaña de verificación
+      if (err.body?.requiereVerificacion) {
+        navigate("/verificar", { state: { email: err.body.email || email } });
+        return;
+      }
       setError(err.message);
     }
   };
@@ -91,13 +97,10 @@ function Login() {
 
             <div className="login-form__separator">o</div>
 
+            <GoogleLoginButton onError={setError} />
+
             <div className="login-form__social-row">
-              <button type="button" className="login-form__social-btn login-form__social-btn--google">
-                G Continuar con Google
-              </button>
-              <button type="button" className="login-form__social-btn login-form__social-btn--facebook">
-                f Continuar con Facebook
-              </button>
+            
             </div>
           </form>
         </div>

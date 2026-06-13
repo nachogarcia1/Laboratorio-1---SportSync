@@ -7,7 +7,7 @@ import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Admin.css";
 
-// Fix para los íconos de Leaflet con Vite/bundlers
+// Fix iconos Leaflet con Vite/bundlers
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { id: "reservas",   label: "Supervisar Reservas",  icon: "📋" },
   { id: "usuarios",   label: "Gestión de Usuarios",  icon: "👥" },
   { id: "ratings",    label: "Historial de Ratings", icon: "⭐" },
+  { id: "precios", label: "Precios Inteligentes", icon: "🏷️" },
 ];
 
 const ACTIVIDAD = [
@@ -50,11 +51,12 @@ function Admin() {
   const [suspenderAbierto, setSuspender]  = useState(false);
   const [modalSede,        setModalSede]        = useState(false);
   const [modalCancha,      setModalCancha]       = useState(false);
-  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" });
+  const [formSede,         setFormSede]          = useState({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "", direccionValidada: false });
   const [geocodandoDir,    setGeocodandoDir]     = useState(false);
-  const geocodDirTimer = useRef(null);
   const [geocodandoBatch,  setGeocodandoBatch]   = useState(false);
   const [geocodBatchMsg,   setGeocodBatchMsg]    = useState("");
+  const [sugerencias,      setSugerencias]       = useState([]);
+  const geocodDirTimer = useRef(null);
   const [formCancha,       setFormCancha]        = useState({ sedeId: "", nombre: "", tipo: "5", precioBase: "", error: "" });
   const [sedesDisponibles, setSedesDisponibles]  = useState([]);
   const [sedes,            setSedes]             = useState([]);
@@ -71,19 +73,18 @@ function Admin() {
   const [filtroUsuario,    setFiltroUsuario]     = useState("TODOS");
   const [emailCalificar,   setEmailCalificar]    = useState("");
   const [usuarioTarget,    setUsuarioTarget]     = useState(null);
-  const [reservasUsuario,    setReservasUsuario]    = useState([]);
-  const [reservaSeleccionada, setReservaSeleccionada] = useState("");
   const [busquedaError,    setBusquedaError]     = useState("");
   const [notaUsuario,      setNotaUsuario]       = useState(0);
   const [hoverNota,        setHoverNota]         = useState(0);
   const [comentarioU,      setComentarioU]       = useState("");
   const [envioMsg,         setEnvioMsg]          = useState("");
   const [envioError,       setEnvioError]        = useState("");
-  const [modalCalificarUser,    setModalCalificarUser]    = useState(null);
-  const [reservasModalCalificar, setReservasModalCalificar] = useState([]);
-  const [reservaMenuSeleccionada, setReservaMenuSeleccionada] = useState("");
+  const [modalCalificarUser, setModalCalificarUser] = useState(null);
   const [ratingsUsuario,     setRatingsUsuario]     = useState([]);
   const [loadingRatings,     setLoadingRatings]     = useState(false);
+  const [preciosData,    setPreciosData]    = useState([]);
+  const [loadingPrecios, setLoadingPrecios] = useState(false);
+  const [recalculando,   setRecalculando]   = useState(false);
 
   // Modal genérico de confirmación
   const [modalConfirmar, setModalConfirmar] = useState(null);
@@ -104,8 +105,15 @@ function Admin() {
     { label: "Ratings Pendientes", valor: 7,  color: "yellow", icon: "⭐" },
   ];
 
+  const FORM_SEDE_RESET = { nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "", direccionValidada: false };
+  const cerrarModalSede = () => { setModalSede(false); setFormSede(FORM_SEDE_RESET); setSugerencias([]); };
+
   const handleCrearSede = async (e) => {
     e.preventDefault();
+    if (!formSede.direccionValidada) {
+      setFormSede(f => ({ ...f, error: "Seleccioná una dirección real del listado de sugerencias o hacé clic en el mapa." }));
+      return;
+    }
     setFormSede(f => ({ ...f, error: "" }));
     try {
       await apiFetch("/sedes", {
@@ -114,77 +122,83 @@ function Admin() {
           nombre:       "Sede " + formSede.nombre,
           direccion:    formSede.direccion,
           horaApertura: formSede.horaApertura,
-          horaCierre:   formSede.horaCierre
+          horaCierre:   formSede.horaCierre,
+          latitud:      formSede.markerPos ? formSede.markerPos[0] : null,
+          longitud:     formSede.markerPos ? formSede.markerPos[1] : null,
         })
       });
       setModalSede(false);
-      setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" });
+      setFormSede(FORM_SEDE_RESET);
     } catch (err) {
       setFormSede(f => ({ ...f, error: err.message }));
     }
   };
 
-  /** Geocodifica todas las sedes que no tienen ubicación todavía */
+  /** Geocodifica todas las sedes que no tienen ubicación */
   const handleGeocodificarTodas = async () => {
     setGeocodandoBatch(true);
     setGeocodBatchMsg("");
     try {
       const data = await apiFetch("/sedes/admin/geocodificar-todas", { method: "POST" });
       setGeocodBatchMsg(`✓ ${data.exitosas} geocodificadas, ${data.fallidas} fallidas de ${data.procesadas} sedes sin ubicación.`);
-      // Recargar la lista para ver las direcciones normalizadas
       const sedesActualizadas = await apiFetch("/sedes/admin/todas");
       setSedes(sedesActualizadas);
     } catch (err) {
-      setGeocodBatchMsg("Error al geocodificar: " + err.message);
+      setGeocodBatchMsg("Error: " + err.message);
     } finally {
       setGeocodandoBatch(false);
     }
   };
 
-  /** Click en el mapa del modal: reverse geocode → actualiza campo dirección */
+  /** Click en el mapa: reverse geocode → actualiza dirección */
   const handleMapPickerClick = async (lat, lng) => {
-    // Cancelar cualquier geocodificación por texto pendiente
     if (geocodDirTimer.current) clearTimeout(geocodDirTimer.current);
-    // Fijar marker; limpiar mapFlyTarget (el usuario ya ve el punto clickeado)
     setFormSede(f => ({ ...f, markerPos: [lat, lng], mapFlyTarget: null }));
     setGeocodandoDir(true);
     try {
       const data = await apiFetch(`/geocoding/reverse?lat=${lat}&lng=${lng}`);
       if (data.direccion) {
-        setFormSede(f => ({ ...f, direccion: data.direccion }));
+        setFormSede(f => ({ ...f, direccion: data.direccion, direccionValidada: true, error: "" }));
       }
     } catch (err) {
-      console.error("Error al obtener dirección:", err);
+      console.error("Error reverse geocoding:", err);
     } finally {
       setGeocodandoDir(false);
     }
   };
 
-  /** Typing en el campo dirección: debounce 800ms → forward geocode → mueve el mapa */
+  /** Typing en dirección: debounce 400ms → busca sugerencias en Nominatim */
   const handleDireccionChange = (e) => {
     const val = e.target.value;
-    setFormSede(f => ({ ...f, direccion: val }));
-
+    // Al escribir manualmente, la dirección deja de ser válida
+    setFormSede(f => ({ ...f, direccion: val, direccionValidada: false }));
+    setSugerencias([]);
     if (geocodDirTimer.current) clearTimeout(geocodDirTimer.current);
-    if (!val.trim() || val.trim().length < 5) return;
-
+    if (!val.trim() || val.trim().length < 4) return;
     geocodDirTimer.current = setTimeout(async () => {
       setGeocodandoDir(true);
       try {
-        const data = await apiFetch(`/geocoding/forward?q=${encodeURIComponent(val)}`);
-        if (data.lat != null && data.lng != null) {
-          setFormSede(f => ({
-            ...f,
-            markerPos:    [data.lat, data.lng],
-            mapFlyTarget: [data.lat, data.lng],
-          }));
-        }
+        const data = await apiFetch(`/geocoding/search?q=${encodeURIComponent(val)}`);
+        setSugerencias(data || []);
       } catch (err) {
-        console.error("Error al geocodificar dirección:", err);
+        console.error("Error buscando sugerencias:", err);
       } finally {
         setGeocodandoDir(false);
       }
-    }, 800);
+    }, 400);
+  };
+
+  /** El usuario elige una sugerencia del dropdown */
+  const handleElegirSugerencia = (sug) => {
+    setFormSede(f => ({
+      ...f,
+      direccion:         sug.displayName,
+      markerPos:         [sug.lat, sug.lng],
+      mapFlyTarget:      [sug.lat, sug.lng],
+      direccionValidada: true,
+      error:             "",
+    }));
+    setSugerencias([]);
   };
 
   const handleAbrirModalCancha = async () => {
@@ -229,6 +243,13 @@ function Admin() {
     }
     if (seccion === "usuarios") {
       apiFetch("/usuarios").then(setUsuarios).catch(console.error);
+    }
+    if (seccion === "precios") {
+      setLoadingPrecios(true);
+      apiFetch("/precios/descuentos-todos")
+        .then(data => setPreciosData(data))
+        .catch(console.error)
+        .finally(() => setLoadingPrecios(false));
     }
   }, [seccion]);
 
@@ -393,24 +414,17 @@ function Admin() {
 
   const handleCalificarUsuario = async (e) => {
     e.preventDefault();
-    if (!reservaSeleccionada) { setEnvioError("Seleccioná una reserva."); return; }
-    if (!reservasUsuario.some(r => r.id === Number(reservaSeleccionada))) {
-      setEnvioError("Esa reserva ya fue calificada. Buscá el usuario de nuevo."); return;
-    }
     if (notaUsuario === 0) { setEnvioError("Seleccioná una nota."); return; }
     setEnvioError("");
-    const payload = {
-      adminId:    adminData.id,
-      usuarioId:  usuarioTarget.id,
-      reservaId:  Number(reservaSeleccionada),
-      nota:       notaUsuario,
-      comentario: comentarioU.trim() || null
-    };
-    console.log("Enviando calificación:", payload);
     try {
       await apiFetch("/criticas/usuarios", {
         method: "POST",
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          adminId:    adminData.id,
+          usuarioId:  usuarioTarget.id,
+          nota:       notaUsuario,
+          comentario: comentarioU.trim() || null
+        })
       });
       setEnvioMsg(`Calificación enviada para ${usuarioTarget.nombre}.`);
       setNotaUsuario(0);
@@ -427,22 +441,14 @@ function Admin() {
     setBusquedaError("");
     setUsuarioTarget(null);
     setRatingsUsuario([]);
-    setReservasUsuario([]);
     setEnvioMsg("");
     setEnvioError("");
     try {
       const data = await apiFetch(`/usuarios/buscar?email=${encodeURIComponent(emailCalificar)}`);
       setUsuarioTarget(data);
-      setReservaSeleccionada("");
       setLoadingRatings(true);
-
-      const [reservasResult, ratingsResult] = await Promise.allSettled([
-        apiFetch(`/reservas/usuario/${data.id}/sin-calificar-admin`),
-        apiFetch(`/criticas/usuarios/${data.id}`)
-      ]);
-
-      if (reservasResult.status === "fulfilled") setReservasUsuario(reservasResult.value);
-      if (ratingsResult.status === "fulfilled") setRatingsUsuario(ratingsResult.value);
+      const ratings = await apiFetch(`/criticas/usuarios/${data.id}`);
+      setRatingsUsuario(ratings);
     } catch (err) {
       setBusquedaError(err.message);
     } finally {
@@ -452,7 +458,6 @@ function Admin() {
 
   const handleCalificarDesdeMenu = async (e) => {
     e.preventDefault();
-    if (!reservaMenuSeleccionada) { setEnvioError("Seleccioná una reserva."); return; }
     if (notaUsuario === 0) { setEnvioError("Seleccioná una nota."); return; }
     setEnvioError("");
     try {
@@ -461,7 +466,6 @@ function Admin() {
         body: JSON.stringify({
           adminId:    adminData.id,
           usuarioId:  modalCalificarUser.id,
-          reservaId:  Number(reservaMenuSeleccionada),
           nota:       notaUsuario,
           comentario: comentarioU.trim() || null
         })
@@ -474,6 +478,19 @@ function Admin() {
       setEnvioError(err.message);
     }
   };
+
+  async function handleRecalcular() {
+    setRecalculando(true);
+    try {
+      await apiFetch("/precios/recalcular", { method: "POST" });
+      const data = await apiFetch("/precios/descuentos-todos");
+      setPreciosData(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRecalculando(false);
+    }
+  }
 
   return (
     <div className="admin-page">
@@ -561,20 +578,9 @@ function Admin() {
                 <div className="admin-section__header">
                   <h2 className="admin-section__title">Gestión de Sedes</h2>
                   <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-                    <button
-                      className="admin-accion-btn admin-accion-btn--gray"
-                      onClick={handleGeocodificarTodas}
-                      disabled={geocodandoBatch}
-                      title="Geocodifica automáticamente todas las sedes que no tienen ubicación"
-                    >
-                      {geocodandoBatch ? "Geocodificando..." : "📍 Geocodificar todas"}
-                    </button>
                     <button className="admin-accion-btn admin-accion-btn--blue" onClick={() => setModalSede(true)}>+ Añadir Sede</button>
                   </div>
                 </div>
-                {geocodBatchMsg && (
-                  <p style={{ fontSize: "0.85rem", color: "#374151", margin: "0.5rem 0" }}>{geocodBatchMsg}</p>
-                )}
                 {sedes.length === 0 && <p className="admin-empty">No hay sedes registradas.</p>}
                 <div className="admin-lista">
                   {sedes.map(sede => (
@@ -704,16 +710,13 @@ function Admin() {
                               ) : (
                                 <button onClick={() => handleRehabilitarUsuario(u.id)}>Rehabilitar</button>
                               )}
-                              <button onClick={async () => {
+                              <button onClick={() => {
                                 setModalCalificarUser(u);
                                 setNotaUsuario(0);
                                 setComentarioU("");
                                 setEnvioError("");
                                 setEnvioMsg("");
-                                setReservaMenuSeleccionada("");
                                 setMenuAbierto(null);
-                                const data = await apiFetch(`/reservas/usuario/${u.id}/sin-calificar-admin`).catch(() => []);
-                                setReservasModalCalificar(data);
                               }}>Calificar</button>
                               <button className="admin-dropdown__danger" onClick={() => handleEliminarUsuario(u.id)}>Eliminar</button>
                             </div>
@@ -747,22 +750,6 @@ function Admin() {
                     <p style={{ marginBottom: "0.75rem" }}>
                       Calificando a: <strong>{usuarioTarget.nombre}</strong> ({usuarioTarget.email})
                     </p>
-                    <label>Reserva</label>
-                    <select
-                      value={reservaSeleccionada}
-                      onChange={e => setReservaSeleccionada(e.target.value)}
-                      required
-                      style = {{width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem" }}
-                    >
-                      <option value="">Seleccioná una reserva</option>
-                      {reservasUsuario.map(r => (
-                        <option key={r.id} value={r.id}>
-                          {r.cancha?.nombre} — {r.fecha} {r.horaInicio} a {r.horaFin}
-                        </option>
-                      ))}
-                      </select>
-                                              
-
                     <label>Nota</label>
                     <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>
                       {[1,2,3,4,5].map(n => (
@@ -776,14 +763,10 @@ function Admin() {
                     </div>
                     <label>Comentario (opcional)</label>
                     <textarea
-                      value={comentarioU}
-                      onChange={e => setComentarioU(e.target.value.slice(0, 255))}
-                      rows={3} placeholder="Motivo de la calificación..." maxLength={255}
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "4px" }}
+                      value={comentarioU} onChange={e => setComentarioU(e.target.value)}
+                      rows={3} placeholder="Motivo de la calificación..."
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem" }}
                     />
-                    <p style={{ fontSize: "11px", color: comentarioU.length >= 240 ? "#dc2626" : "#9ca3af", textAlign: "right", marginBottom: "12px" }}>
-                      {comentarioU.length}/255
-                    </p>
                     {envioError && <p className="form__error">{envioError}</p>}
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button type="button" className="modal-btn-cancel" onClick={() => setUsuarioTarget(null)}>Cancelar</button>
@@ -806,26 +789,22 @@ function Admin() {
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                         <thead>
                           <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
-                            <th style={{ padding: "0.5rem 0.75rem" }}>Cancha</th>
-                            <th style={{ padding: "0.5rem 0.75rem" }}>Fecha reserva</th>
                             <th style={{ padding: "0.5rem 0.75rem" }}>Nota</th>
                             <th style={{ padding: "0.5rem 0.75rem" }}>Comentario</th>
+                            <th style={{ padding: "0.5rem 0.75rem" }}>Fecha</th>
                           </tr>
                         </thead>
                         <tbody>
                           {ratingsUsuario.map(r => (
                             <tr key={r.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                              <td style={{ padding: "0.5rem 0.75rem", fontWeight: 600 }}>
-                                {r.reservaCanchaNombre || "—"}
-                              </td>
-                              <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
-                                {r.reservaFecha || "—"}
-                              </td>
                               <td style={{ padding: "0.5rem 0.75rem" }}>
                                 {"★".repeat(r.nota)}{"☆".repeat(5 - r.nota)}
                               </td>
                               <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
                                 {r.comentario || "—"}
+                              </td>
+                              <td style={{ padding: "0.5rem 0.75rem", color: "#6b7280" }}>
+                                {r.fecha ? new Date(r.fecha).toLocaleDateString("es-AR") : "—"}
                               </td>
                             </tr>
                           ))}
@@ -837,7 +816,71 @@ function Admin() {
               </section>
             )}
 
-            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && (
+
+            {seccion === "precios" && (
+              <section className="admin-section">
+                <h2 className="admin-section__title">Precios Inteligentes</h2>
+
+                <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                  <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: 0 }}>
+                    Descuentos activos calculados por demanda histórica. Se recalculan automáticamente cada noche.
+                  </p>
+                  <button
+                    className="modal-btn-save"
+                    onClick={handleRecalcular}
+                    disabled={recalculando}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {recalculando ? "Recalculando..." : "🔄 Recalcular ahora"}
+                  </button>
+                </div>
+
+                {loadingPrecios ? (
+                  <p style={{ color: "#6b7280" }}>Cargando...</p>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                    <thead>
+                      <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
+                        <th style={{ padding: "0.75rem" }}>Cancha</th>
+                        <th style={{ padding: "0.75rem" }}>Sede</th>
+                        <th style={{ padding: "0.75rem" }}>Tipo</th>
+                        <th style={{ padding: "0.75rem" }}>Precio Base</th>
+                        <th style={{ padding: "0.75rem" }}>Descuentos Activos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preciosData.map(c => (
+                        <tr key={c.canchaId} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                          <td style={{ padding: "0.75rem", fontWeight: 600 }}>{c.nombre}</td>
+                          <td style={{ padding: "0.75rem" }}>{c.sede}</td>
+                          <td style={{ padding: "0.75rem" }}>Fútbol {c.tipo}</td>
+                          <td style={{ padding: "0.75rem" }}>${c.precioBase.toLocaleString("es-AR")}</td>
+                          <td style={{ padding: "0.75rem" }}>
+                            {c.descuentos.length === 0 ? (
+                              <span style={{ color: "#9ca3af" }}>Sin descuentos</span>
+                            ) : (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+                                {c.descuentos.map(d => (
+                                  <span key={d.hora} style={{
+                                    background: "#dcfce7", color: "#16a34a",
+                                    borderRadius: "4px", padding: "2px 6px",
+                                    fontSize: "0.8rem", fontWeight: 600
+                                  }}>
+                                    {d.hora} -{d.descuentoPorcentaje}%
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            )}
+
+            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && (
               <div className="admin-wip"><p>Sección en desarrollo</p></div>
             )}
 
@@ -847,11 +890,11 @@ function Admin() {
 
       {/* Modal Añadir Sede */}
       {modalSede && (
-        <div className="modal-overlay" onClick={() => { setModalSede(false); setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" }); }}>
+        <div className="modal-overlay" onClick={() => cerrarModalSede()}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Añadir Sede</h2>
-              <button className="modal-close" onClick={() => { setModalSede(false); setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" }); }}>✕</button>
+              <button className="modal-close" onClick={() => cerrarModalSede()}>✕</button>
             </div>
             <form className="modal-form" onSubmit={handleCrearSede}>
               <label>Nombre</label>
@@ -861,11 +904,33 @@ function Admin() {
                   onChange={e => setFormSede({ ...formSede, nombre: e.target.value })} />
               </div>
               <label>Dirección</label>
-              <input type="text" placeholder="Escribí o hacé click en el mapa" value={formSede.direccion} maxLength={255}
-                onChange={handleDireccionChange} />
-              {geocodandoDir && <p className="modal-map-loading">Buscando ubicación...</p>}
+              <div style={{ position: "relative" }}>
+                <input type="text" placeholder="Escribí para buscar una dirección real..." value={formSede.direccion} maxLength={255}
+                  onChange={handleDireccionChange}
+                  onBlur={() => setTimeout(() => setSugerencias([]), 150)}
+                  style={{ width: "100%", borderColor: formSede.direccion && !formSede.direccionValidada ? "#f59e0b" : undefined }}
+                />
+                {formSede.direccion && !formSede.direccionValidada && !geocodandoDir && sugerencias.length === 0 && (
+                  <p style={{ fontSize: "0.78rem", color: "#b45309", margin: "2px 0 0" }}>
+                    ⚠️ Elegí una opción de la lista o hacé clic en el mapa.
+                  </p>
+                )}
+                {formSede.direccionValidada && (
+                  <p style={{ fontSize: "0.78rem", color: "#16a34a", margin: "2px 0 0" }}>✓ Dirección confirmada</p>
+                )}
+                {geocodandoDir && <p className="modal-map-loading">Buscando...</p>}
+                {sugerencias.length > 0 && (
+                  <ul className="geocod-dropdown">
+                    {sugerencias.map((s, i) => (
+                      <li key={i} className="geocod-dropdown__item" onMouseDown={() => handleElegirSugerencia(s)}>
+                        {s.displayName}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <label>Ubicación en el mapa</label>
-              <p className="modal-map-hint">Escribí la dirección arriba o hacé click en el mapa — ambos se sincronizan automáticamente.</p>
+              <p className="modal-map-hint">Escribí la dirección y elegí una sugerencia, o hacé clic directamente en el mapa.</p>
               <div className="modal-map-picker">
                 <MapContainer
                   key="sede-map-picker"
@@ -891,8 +956,8 @@ function Admin() {
                 onChange={e => setFormSede({ ...formSede, horaCierre: e.target.value })} />
               {formSede.error && <p className="form__error">{formSede.error}</p>}
               <div className="modal-actions">
-                <button type="button" className="modal-btn-cancel" onClick={() => { setModalSede(false); setFormSede({ nombre: "", direccion: "", horaApertura: "08:00", horaCierre: "22:00", markerPos: null, mapFlyTarget: null, error: "" }); }}>Cancelar</button>
-                <button type="submit" className="modal-btn-save" disabled={!formSede.direccion}>Crear Sede</button>
+                <button type="button" className="modal-btn-cancel" onClick={() => cerrarModalSede()}>Cancelar</button>
+                <button type="submit" className="modal-btn-save" disabled={!formSede.nombre || !formSede.direccionValidada}>Crear Sede</button>
               </div>
             </form>
           </div>
@@ -1040,20 +1105,6 @@ function Admin() {
               <p style={{ marginBottom: "0.75rem" }}>
                 Calificando a: <strong>{modalCalificarUser.nombre}</strong> ({modalCalificarUser.email})
               </p>
-              <label>Reserva</label>
-              <select
-                value={reservaMenuSeleccionada}
-                onChange={e => setReservaMenuSeleccionada(e.target.value)}
-                required
-                style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem" }}
-              >
-                <option value="">Seleccioná una reserva</option>
-                {reservasModalCalificar.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {r.cancha?.nombre} — {r.fecha} {r.horaInicio} a {r.horaFin}
-                  </option>
-                ))}
-              </select>
               <label>Nota</label>
               <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>
                 {[1,2,3,4,5].map(n => (
@@ -1066,14 +1117,8 @@ function Admin() {
                 ))}
               </div>
               <label>Comentario (opcional)</label>
-              <textarea
-                value={comentarioU}
-                onChange={e => setComentarioU(e.target.value.slice(0, 255))}
-                rows={3} placeholder="Motivo de la calificación..." maxLength={255}
-              />
-              <p style={{ fontSize: "11px", color: comentarioU.length >= 240 ? "#dc2626" : "#9ca3af", textAlign: "right", marginBottom: "8px" }}>
-                {comentarioU.length}/255
-              </p>
+              <textarea value={comentarioU} onChange={e => setComentarioU(e.target.value)}
+                rows={3} placeholder="Motivo de la calificación..." />
               {envioError && <p className="form__error">{envioError}</p>}
               {envioMsg && <p style={{ color: "#22c55e", fontWeight: 600 }}>{envioMsg}</p>}
               <div className="modal-actions">
