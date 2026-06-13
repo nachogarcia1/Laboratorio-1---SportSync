@@ -29,7 +29,9 @@ public class Security {
                 )
                 .authorizeHttpRequests(auth -> auth
                         /*todos*/
-                        .requestMatchers("/usuarios/login", "/usuarios/register", "/error").permitAll()
+                        .requestMatchers("/usuarios/login", "/usuarios/register",
+                                "/usuarios/verificar", "/usuarios/reenviar-codigo",
+                                "/usuarios/oauth/google", "/error").permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/canchas/buscar"

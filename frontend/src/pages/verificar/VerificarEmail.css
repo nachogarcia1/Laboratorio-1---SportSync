@@ -1,0 +1,110 @@
+.verif-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.verif-page__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: var(--light-bg);
+}
+
+.verif-card {
+  background: #fff;
+  border: 1px solid var(--border-card);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.verif-card__logo {
+  display: inline-block;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--navy);
+  margin-bottom: 16px;
+}
+
+.verif-card__title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0 0 8px;
+}
+
+.verif-card__subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-soft);
+  margin: 0 0 24px;
+}
+
+.verif-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.verif-form__code {
+  font-size: 30px;
+  letter-spacing: 14px;
+  text-align: center;
+  padding: 14px 0;
+  border: 2px solid var(--mid-gray);
+  border-radius: 10px;
+  outline: none;
+  font-weight: 700;
+  color: var(--blue-dark);
+  transition: border-color 0.2s;
+}
+
+.verif-form__code:focus { border-color: var(--blue); }
+
+.verif-form__btn {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.verif-form__btn:hover:not(:disabled) { background: var(--blue-dark); }
+.verif-form__btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.verif-form__error { color: var(--danger); font-size: 13px; margin: 0; }
+.verif-form__info  { color: #16a34a;      font-size: 13px; margin: 0; }
+
+.verif-card__resend {
+  margin-top: 22px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.verif-card__resend-btn {
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+.verif-card__resend-btn:hover { text-decoration: underline; }
+.verif-card__resend-wait { color: var(--mid-gray); font-weight: 600; }
+
+.verif-card__foot {
+  margin: 20px 0 0;
+  font-size: 12px;
+  color: #9aa1ad;
+}

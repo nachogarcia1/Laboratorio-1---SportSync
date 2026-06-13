@@ -28,7 +28,10 @@ export async function apiFetch(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.error || `Error ${response.status}`);
+    const error = new Error(data.error || `Error ${response.status}`);
+    error.status = response.status;
+    error.body = data; // expone flags como requiereVerificacion
+    throw error;
   }
 
   return data;

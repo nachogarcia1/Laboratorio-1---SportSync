@@ -1,5 +1,6 @@
 package com.sportsync.backend.service;
 
+import com.sportsync.backend.exception.CuentaNoVerificadaException;
 import com.sportsync.backend.exception.UsuarioNoEncontradoException;
 import com.sportsync.backend.model.admin.*;
 import com.sportsync.backend.model.entidades.Rol;
@@ -66,7 +67,41 @@ public class UsuarioService {
         if (!passwordEncoder.matches(password, usuario.getPassword()))
             throw new IllegalArgumentException("Email o contraseña incorrectos.");
 
+        if (!usuario.isVerificado())
+            throw new CuentaNoVerificadaException("Verificá tu email antes de iniciar sesión.");
+
         return usuario;
+    }
+
+    /**
+     * Login/alta vía Google OAuth. Si el email ya existe, lo loguea (marcándolo
+     * verificado, porque Google validó el email). Si no, crea la cuenta con
+     * authProvider=GOOGLE, sin DNI y con una contraseña aleatoria no usable.
+     */
+    public Usuario loginConGoogle(String email, String nombre) {
+        return repo.findByEmail(email)
+                .map(usuario -> {
+                    if (usuario.getEstado() == EstadoUsuario.SUSPENDIDO_PERMANENTE)
+                        throw new IllegalStateException("Tu cuenta está suspendida permanentemente.");
+                    if (!usuario.isVerificado()) {
+                        usuario.setVerificado(true);
+                        repo.save(usuario);
+                    }
+                    return usuario;
+                })
+                .orElseGet(() -> {
+                    Usuario nuevo = new Usuario();
+                    nuevo.setNombre(nombre != null && !nombre.isBlank() ? nombre : email);
+                    nuevo.setEmail(email);
+                    nuevo.setPassword(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+                    nuevo.setDni(null); // se completa luego desde el perfil
+                    nuevo.setTelefono(null);
+                    nuevo.setRol(Rol.NO_SOCIO);
+                    nuevo.setEstado(EstadoUsuario.ACTIVO);
+                    nuevo.setVerificado(true);
+                    nuevo.setAuthProvider(com.sportsync.backend.model.entidades.AuthProvider.GOOGLE);
+                    return repo.save(nuevo);
+                });
     }
 
     public Usuario obtenerPorEmail(String email) {

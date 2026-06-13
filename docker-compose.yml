@@ -40,6 +40,7 @@ services:
       - ./frontend/public:/app/public
       - ./frontend/index.html:/app/index.html
       - ./frontend/vite.config.js:/app/vite.config.js
+      - ./frontend/.env:/app/.env
 
 volumes:
   postgres_data: {}
