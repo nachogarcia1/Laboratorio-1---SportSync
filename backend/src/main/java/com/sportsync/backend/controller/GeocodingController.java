@@ -5,7 +5,9 @@ import com.sportsync.backend.service.GeocodingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/geocoding")
@@ -18,14 +20,27 @@ public class GeocodingController {
     }
 
     /**
+     * Autocomplete: devuelve hasta 5 sugerencias para el texto ingresado.
+     * GET /geocoding/search?q=Av+Corrientes
+     * → [{ "displayName": "...", "lat": -34.6, "lng": -58.3 }, ...]
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<Map<String, Object>>> search(@RequestParam String q) {
+        List<GeocodingService.Sugerencia> sugerencias = geocodingService.buscarSugerencias(q);
+        List<Map<String, Object>> result = sugerencias.stream()
+                .map(s -> Map.<String, Object>of(
+                        "displayName", s.displayName(),
+                        "lat", s.lat(),
+                        "lng", s.lng()
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * Reverse geocoding: convierte coordenadas GPS en una dirección legible.
      * Usado por el mapa picker del panel admin para sincronizar dirección ↔ ubicación.
      *
-     * GET /geocoding/reverse?lat=-34.60&lng=-58.38
-     * → { "direccion": "Av. Corrientes 1234, Buenos Aires, Argentina" }
-     */
-    /**
-     * Reverse geocoding: convierte coordenadas GPS en una dirección legible.
      * GET /geocoding/reverse?lat=-34.60&lng=-58.38
      * → { "direccion": "Av. Corrientes 1234, Buenos Aires, Argentina" }
      */

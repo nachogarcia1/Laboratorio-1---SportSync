@@ -14,6 +14,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class GeocodingService {
@@ -34,6 +35,36 @@ public class GeocodingService {
             request.getHeaders().set("User-Agent", "SportsSync/1.0 (lab-project)");
             return execution.execute(request, body);
         });
+    }
+
+    public record Sugerencia(String displayName, double lat, double lng) {}
+
+    /**
+     * Devuelve hasta 5 sugerencias de Nominatim para el texto ingresado.
+     * Usado por el autocomplete del modal de creación de sedes.
+     */
+    public List<Sugerencia> buscarSugerencias(String texto) {
+        try {
+            String query = URLEncoder.encode(texto + ", Argentina", StandardCharsets.UTF_8);
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    "https://nominatim.openstreetmap.org/search?q=" + query + "&format=json&limit=5&addressdetails=0",
+                    HttpMethod.GET, null,
+                    new ParameterizedTypeReference<>() {}
+            );
+            List<Map<String, Object>> results = response.getBody();
+            if (results != null) {
+                return results.stream()
+                        .map(r -> new Sugerencia(
+                                r.getOrDefault("display_name", "").toString(),
+                                Double.parseDouble(r.get("lat").toString()),
+                                Double.parseDouble(r.get("lon").toString())
+                        ))
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            System.err.println("Error al buscar sugerencias para '" + texto + "': " + e.getMessage());
+        }
+        return List.of();
     }
 
     /**
