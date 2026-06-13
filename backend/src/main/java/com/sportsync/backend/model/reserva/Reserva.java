@@ -47,6 +47,12 @@ public class Reserva {
     @Column(nullable = false)
     private boolean iluminacion = false;
 
+    @Column(nullable = false)
+    private double precioBase;
+
+    @Column(nullable = false)
+    private double descuentoAplicado = 0.0;
+
     @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReservaEquipamiento> equipamiento;
 
@@ -62,6 +68,8 @@ public class Reserva {
     public double getPrecioTotal()                   { return precioTotal; }
     public boolean isIluminacion()                   { return iluminacion; }
     public List<ReservaEquipamiento> getEquipamiento() { return equipamiento; }
+    public double getPrecioBase()                            { return precioBase; }
+    public double getDescuentoAplicado()                     { return descuentoAplicado; }
 
     public void setUsuario(Usuario usuario)          { this.usuario = usuario; }
     public void setCancha(Cancha cancha)             { this.cancha = cancha; }
@@ -71,4 +79,7 @@ public class Reserva {
     public void setEstado(EstadoReserva estado)      { this.estado = estado; }
     public void setPrecioTotal(double precioTotal)   { this.precioTotal = precioTotal; }
     public void setIluminacion(boolean iluminacion)  { this.iluminacion = iluminacion; }
+    public void setPrecioBase(double precioBase)             { this.precioBase = precioBase; }
+    public void setDescuentoAplicado(double d)               { this.descuentoAplicado = d; }
+
 }
