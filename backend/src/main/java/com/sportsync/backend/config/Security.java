@@ -42,7 +42,7 @@ public class Security {
                         ).permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
-                                "/sedes/**", "/canchas/**", "/equipamiento", "/reservas/disponibilidad"
+                                "/sedes/**", "/canchas/**", "/equipamiento", "/reservas/disponibilidad", "/reservas/config"
                         ).permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
