@@ -10,6 +10,7 @@ import com.sportsync.backend.model.entidades.Usuario;
 import com.sportsync.backend.model.reserva.Reserva;
 import com.sportsync.backend.model.reserva.ReservaEquipamiento;
 import com.sportsync.backend.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -18,6 +19,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +39,10 @@ public class ReservaService {
     private static final int HORAS_MIN_CANCELACION = 2;
     // Precio fijo de iluminación
     private static final double PRECIO_ILUMINACION = 500.0;
+
+    // Antelación mínima (minutos) para reservar un turno; en la tz de la sede
+    @Value("${sportsync.reservas.antelacion-minima-minutos:30}")
+    private int antelacionMinimaMinutos;
 
     public ReservaService(ReservaRepository reservaRepo,
                           CanchaRepository canchaRepo,
@@ -56,6 +63,11 @@ public class ReservaService {
         return reservaRepo.findByCanchaIdAndFechaAndEstado(canchaId, fecha, EstadoReserva.ACTIVA);
     }
 
+    /** Antelación mínima (minutos) para reservar; el frontend la usa para grisar turnos. */
+    public int getAntelacionMinimaMinutos() {
+        return antelacionMinimaMinutos;
+    }
+
     // ── UC-40: Crear reserva ──────────────────────────────────────────────────
 
     @Transactional
@@ -68,14 +80,18 @@ public class ReservaService {
             throw new IllegalStateException("La cancha está en mantenimiento.");
         }
 
-        // Validar que la fecha no sea en el pasado
-        if (req.getFecha().isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("No podés reservar en una fecha pasada.");
-        }
+        // Validar horario vencido / antelación mínima, usando la zona horaria de la sede.
+        // Esta validación es la autoridad: aunque el frontend lo permita, el backend rechaza.
+        ZoneId zona = ZoneId.of(cancha.getSede().getZonaHoraria());
+        ZonedDateTime ahora = ZonedDateTime.now(zona);
+        ZonedDateTime inicioReserva = ZonedDateTime.of(req.getFecha(), req.getHoraInicio(), zona);
 
-        // Validar que el horario de hoy no haya pasado
-        if (req.getFecha().isEqual(LocalDate.now()) && req.getHoraInicio().isBefore(LocalTime.now())) {
+        if (inicioReserva.isBefore(ahora)) {
             throw new IllegalArgumentException("No podés reservar en un horario que ya pasó.");
+        }
+        if (inicioReserva.isBefore(ahora.plusMinutes(antelacionMinimaMinutos))) {
+            throw new IllegalArgumentException(
+                    "Tenés que reservar con al menos " + antelacionMinimaMinutos + " minutos de anticipación.");
         }
 
         // UC-31: Validar anti-solapamiento

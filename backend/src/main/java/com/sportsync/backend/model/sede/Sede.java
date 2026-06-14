@@ -38,6 +38,10 @@ public class Sede {
     @Column(nullable = false)
     private boolean activa = true;
 
+    /** Zona horaria IANA de la sede (p.ej. "America/Argentina/Buenos_Aires"). */
+    @Column(nullable = false)
+    private String zonaHoraria = "America/Argentina/Buenos_Aires";
+
     /**
      * Ubicación geográfica almacenada como punto PostGIS (SRID 4326 = WGS-84).
      * Se serializa como latitud/longitud separados para compatibilidad con el frontend.
@@ -68,6 +72,7 @@ public class Sede {
     public String getHoraApertura() { return horaApertura; }
     public String getHoraCierre()   { return horaCierre; }
     public boolean isActiva()       { return activa; }
+    public String getZonaHoraria()  { return zonaHoraria; }
 
     /** Latitud extraída del Point (Y en coordenadas JTS). */
     @JsonProperty("latitud")
@@ -93,6 +98,7 @@ public class Sede {
     public void setHoraApertura(String horaApertura) { this.horaApertura = horaApertura; }
     public void setHoraCierre(String horaCierre)     { this.horaCierre = horaCierre; }
     public void setActiva(boolean activa)            { this.activa = activa; }
+    public void setZonaHoraria(String zonaHoraria)   { this.zonaHoraria = zonaHoraria; }
     public void setUbicacion(Point ubicacion)        { this.ubicacion = ubicacion; }
     public void setCanchas(List<Cancha> canchas)     { this.canchas = canchas; }
 

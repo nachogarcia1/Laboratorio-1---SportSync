@@ -32,6 +32,14 @@ public class ReservaController {
         return ResponseEntity.ok(service.obtenerReservasDelDia(canchaId, fecha));
     }
 
+    // ── Config pública de reservas (para que el front grise turnos igual que el back) ──
+    // GET /reservas/config → { antelacionMinimaMinutos }
+    @GetMapping("/config")
+    public ResponseEntity<?> config() {
+        return ResponseEntity.ok(Map.of(
+                "antelacionMinimaMinutos", service.getAntelacionMinimaMinutos()));
+    }
+
     // ── UC-40: Crear reserva ──────────────────────────────────────────────────
     // POST /reservas
     // Body: CrearReservaRequest

@@ -42,6 +42,7 @@ function SedeDetalle() {
   const [ratingsMap,        setRatingsMap]        = useState({});
   const [loadingGrupos,     setLoadingGrupos]     = useState(new Set());
   const [refreshKey,        setRefreshKey]        = useState(0);
+  const [antelacionMin,     setAntelacionMin]     = useState(30);
 
   // Booking modal
   const [modal,         setModal]         = useState(null);
@@ -130,12 +131,30 @@ function SedeDetalle() {
     });
   }, [canchas, offset, refreshKey]);
 
+  // Antelación mínima (la misma que valida el backend) para grisar turnos
+  useEffect(() => {
+    apiFetch("/reservas/config")
+      .then(cfg => { if (cfg?.antelacionMinimaMinutos != null) setAntelacionMin(cfg.antelacionMinimaMinutos); })
+      .catch(() => {});
+  }, []);
+
   const fecha = new Date();
   fecha.setDate(fecha.getDate() + offset);
   const fechaFormateada = `${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`;
 
+  // "Ahora" en minutos del día, según la zona horaria de la sede.
+  function minutosAhoraEnSede() {
+    const tz = sede?.zonaHoraria || "America/Argentina/Buenos_Aires";
+    const ahoraSede = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+    return ahoraSede.getHours() * 60 + ahoraSede.getMinutes();
+  }
+
   function getSlotsDisponibles(canchasGrupo) {
     const slots = [];
+    // Solo el día de hoy (offset 0) tiene turnos vencidos; los días futuros, no.
+    const esHoy = offset === 0;
+    const limiteMin = esHoy ? minutosAhoraEnSede() + antelacionMin : -1;
+
     for (let h = HORA_APERTURA; h < HORA_CIERRE; h++) {
       const ini = horaStr(h);
       const fin = horaStr(h + 1);
@@ -147,7 +166,9 @@ function SedeDetalle() {
         });
       });
       if (canchaLibre) {
-        slots.push({ ini, fin, canchaId: canchaLibre.id });
+        // Deshabilitado si el turno arranca antes de "ahora + antelación" (en tz de la sede).
+        const vencido = esHoy && (h * 60) < limiteMin;
+        slots.push({ ini, fin, canchaId: canchaLibre.id, vencido });
       }
     }
     return slots;
@@ -308,21 +329,24 @@ function SedeDetalle() {
                             <p className="cancha-turnos-placeholder">No hay turnos disponibles para este día.</p>
                           ) : (
                             <div className="cancha-card__turnos">
-                              {slots.map(({ ini, fin, canchaId }) => {
+                              {slots.map(({ ini, fin, canchaId, vencido }) => {
                                 const descuento = getDescuentoSlot(canchaId, ini);
                                 return (
-                                  <div key={ini} className="turno-row">
+                                  <div key={ini} className={`turno-row${vencido ? " turno-row--vencido" : ""}`}>
                                     <span className="turno-hora">{ini}</span>
-                                    {descuento > 0 ? (
+                                    {vencido ? (
+                                      <span className="turno-badge turno-badge--vencido">Horario no disponible</span>
+                                    ) : descuento > 0 ? (
                                       <span className="turno-badge turno-badge--descuento">🏷️ -{descuento}% dto.</span>
                                     ) : (
                                       <span className="turno-badge turno-badge--normal">{fin}</span>
                                     )}
                                     <button
                                       className="turno-reservar-btn"
-                                      onClick={() => handleAbrirModal(canchaId, tipoNum, ini, fin)}
+                                      disabled={vencido}
+                                      onClick={() => !vencido && handleAbrirModal(canchaId, tipoNum, ini, fin)}
                                     >
-                                      Reservar
+                                      {vencido ? "No disponible" : "Reservar"}
                                     </button>
                                   </div>
                                 );
