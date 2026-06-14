@@ -38,6 +38,7 @@ const NAV_ITEMS = [
   { id: "usuarios",   label: "Gestión de Usuarios",  icon: "👥" },
   { id: "ratings",    label: "Historial de Ratings", icon: "⭐" },
   { id: "precios", label: "Precios Inteligentes", icon: "🏷️" },
+  { id: "extras",  label: "Gestión de Extras",    icon: "🎽" },
 ];
 
 const ACTIVIDAD = [
@@ -85,6 +86,9 @@ function Admin() {
   const [preciosData,    setPreciosData]    = useState([]);
   const [loadingPrecios, setLoadingPrecios] = useState(false);
   const [recalculando,   setRecalculando]   = useState(false);
+  const [extrasAdmin,    setExtrasAdmin]    = useState([]);
+  const [loadingExtras,  setLoadingExtras]  = useState(false);
+  const [formExtra,      setFormExtra]      = useState({ nombre: "", precio: "", stock: "", sedeId: "", error: "" });
 
   // Modal genérico de confirmación
   const [modalConfirmar, setModalConfirmar] = useState(null);
@@ -250,6 +254,14 @@ function Admin() {
         .then(data => setPreciosData(data))
         .catch(console.error)
         .finally(() => setLoadingPrecios(false));
+    }
+    if (seccion === "extras") {
+      setLoadingExtras(true);
+      apiFetch("/equipamiento/admin/todos")
+        .then(data => setExtrasAdmin(data))
+        .catch(console.error)
+        .finally(() => setLoadingExtras(false));
+      apiFetch("/sedes/admin/todas").then(setSedes).catch(console.error);
     }
   }, [seccion]);
 
@@ -491,6 +503,66 @@ function Admin() {
       setRecalculando(false);
     }
   }
+
+  // ── Extras (equipamiento) ──────────────────────────────────────────────────
+  const recargarExtras = () =>
+    apiFetch("/equipamiento/admin/todos").then(setExtrasAdmin).catch(console.error);
+
+  const handleCrearExtra = async (e) => {
+    e.preventDefault();
+    setFormExtra(f => ({ ...f, error: "" }));
+    const precio = parseFloat(formExtra.precio);
+    const stock  = parseInt(formExtra.stock, 10);
+    if (!formExtra.nombre.trim())       { setFormExtra(f => ({ ...f, error: "Ingresá un nombre." })); return; }
+    if (isNaN(precio) || precio <= 0)   { setFormExtra(f => ({ ...f, error: "Precio inválido." })); return; }
+    if (isNaN(stock)  || stock < 0)     { setFormExtra(f => ({ ...f, error: "Stock inválido." })); return; }
+    try {
+      await apiFetch("/equipamiento", {
+        method: "POST",
+        body: JSON.stringify({
+          nombre: formExtra.nombre.trim(),
+          precio, stock, disponible: true,
+          sedeId: formExtra.sedeId ? Number(formExtra.sedeId) : null
+        })
+      });
+      setFormExtra({ nombre: "", precio: "", stock: "", sedeId: "", error: "" });
+      recargarExtras();
+    } catch (err) {
+      setFormExtra(f => ({ ...f, error: err.message }));
+    }
+  };
+
+  const handleToggleExtra = async (id) => {
+    try {
+      await apiFetch(`/equipamiento/${id}/toggle`, { method: "PUT" });
+      recargarExtras();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleGuardarExtra = async (id, precio, stock) => {
+    try {
+      await apiFetch(`/equipamiento/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ precio: parseFloat(precio), stock: parseInt(stock, 10) })
+      });
+      recargarExtras();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleEliminarExtra = (id) => {
+    setModalConfirmar({
+      titulo: "Eliminar Extra",
+      mensaje: "¿Eliminar este extra? Esta acción no se puede deshacer.",
+      danger: true,
+      onConfirmar: async () => {
+        try {
+          await apiFetch(`/equipamiento/${id}`, { method: "DELETE" });
+          recargarExtras();
+        } catch (err) { console.error(err); }
+        setModalConfirmar(null);
+      }
+    });
+  };
 
   return (
     <div className="admin-page">
@@ -880,7 +952,96 @@ function Admin() {
               </section>
             )}
 
-            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && (
+            {seccion === "extras" && (
+              <section className="admin-section">
+                <h2 className="admin-section__title">Gestión de Extras</h2>
+                <p style={{ color: "#6b7280", fontSize: "0.9rem", margin: "0 0 1rem" }}>
+                  Equipamiento que los usuarios pueden sumar a su reserva. Sin sede = global (todas las sedes).
+                </p>
+
+                {/* Crear extra */}
+                <form onSubmit={handleCrearExtra}
+                  style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "1rem", background: "#f9fafb", padding: "1rem", borderRadius: "8px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", flex: "1 1 160px" }}>
+                    <label style={{ fontSize: "0.8rem", color: "#6b7280" }}>Nombre</label>
+                    <input type="text" value={formExtra.nombre} maxLength={60}
+                      onChange={e => setFormExtra({ ...formExtra, nombre: e.target.value })} placeholder="Ej: Pelota" />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", width: "100px" }}>
+                    <label style={{ fontSize: "0.8rem", color: "#6b7280" }}>Precio</label>
+                    <input type="number" min="0" value={formExtra.precio}
+                      onChange={e => setFormExtra({ ...formExtra, precio: e.target.value })} placeholder="$" />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", width: "90px" }}>
+                    <label style={{ fontSize: "0.8rem", color: "#6b7280" }}>Stock</label>
+                    <input type="number" min="0" value={formExtra.stock}
+                      onChange={e => setFormExtra({ ...formExtra, stock: e.target.value })} placeholder="0" />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", minWidth: "150px" }}>
+                    <label style={{ fontSize: "0.8rem", color: "#6b7280" }}>Sede</label>
+                    <select value={formExtra.sedeId} onChange={e => setFormExtra({ ...formExtra, sedeId: e.target.value })}>
+                      <option value="">Global (todas)</option>
+                      {sedes.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                    </select>
+                  </div>
+                  <button type="submit" className="modal-btn-save">Crear extra</button>
+                </form>
+                {formExtra.error && <p style={{ color: "#dc2626", fontSize: "0.85rem", margin: "0 0 1rem" }}>{formExtra.error}</p>}
+
+                {/* Listado */}
+                {loadingExtras ? (
+                  <p style={{ color: "#6b7280" }}>Cargando...</p>
+                ) : extrasAdmin.length === 0 ? (
+                  <p style={{ color: "#9ca3af" }}>No hay extras cargados.</p>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                    <thead>
+                      <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
+                        <th style={{ padding: "0.75rem" }}>Nombre</th>
+                        <th style={{ padding: "0.75rem" }}>Precio</th>
+                        <th style={{ padding: "0.75rem" }}>Stock</th>
+                        <th style={{ padding: "0.75rem" }}>Alcance</th>
+                        <th style={{ padding: "0.75rem" }}>Estado</th>
+                        <th style={{ padding: "0.75rem" }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {extrasAdmin.map(it => (
+                        <tr key={it.id} style={{ borderBottom: "1px solid #e5e7eb", opacity: it.disponible ? 1 : 0.55 }}>
+                          <td style={{ padding: "0.75rem", fontWeight: 600 }}>{it.nombre}</td>
+                          <td style={{ padding: "0.75rem" }}>
+                            <input type="number" min="0" value={it.precioPorUnidad} style={{ width: "80px" }}
+                              onChange={e => setExtrasAdmin(prev => prev.map(x => x.id === it.id ? { ...x, precioPorUnidad: e.target.value } : x))} />
+                          </td>
+                          <td style={{ padding: "0.75rem" }}>
+                            <input type="number" min="0" value={it.stock} style={{ width: "70px" }}
+                              onChange={e => setExtrasAdmin(prev => prev.map(x => x.id === it.id ? { ...x, stock: e.target.value } : x))} />
+                          </td>
+                          <td style={{ padding: "0.75rem" }}>
+                            {it.sedeId ? (sedes.find(s => s.id === it.sedeId)?.nombre || `Sede ${it.sedeId}`) : <span style={{ color: "#2563eb" }}>Global</span>}
+                          </td>
+                          <td style={{ padding: "0.75rem" }}>
+                            {it.disponible
+                              ? <span style={{ color: "#16a34a", fontWeight: 600 }}>Activo</span>
+                              : <span style={{ color: "#9ca3af", fontWeight: 600 }}>Inactivo</span>}
+                          </td>
+                          <td style={{ padding: "0.75rem", whiteSpace: "nowrap" }}>
+                            <button className="modal-btn-save" style={{ padding: "4px 10px", marginRight: "6px" }}
+                              onClick={() => handleGuardarExtra(it.id, it.precioPorUnidad, it.stock)}>💾</button>
+                            <button className="modal-btn-save" style={{ padding: "4px 10px", marginRight: "6px", background: it.disponible ? "#6b7280" : "#16a34a" }}
+                              onClick={() => handleToggleExtra(it.id)}>{it.disponible ? "Desactivar" : "Activar"}</button>
+                            <button className="modal-btn-save" style={{ padding: "4px 10px", background: "#dc2626" }}
+                              onClick={() => handleEliminarExtra(it.id)}>Eliminar</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            )}
+
+            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && seccion !== "extras" && (
               <div className="admin-wip"><p>Sección en desarrollo</p></div>
             )}
 

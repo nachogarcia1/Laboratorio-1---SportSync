@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
@@ -58,9 +58,11 @@ const DEFAULT_CENTER = [-34.6037, -58.3816];
 
 export default function BuscarCanchas() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [nombre,        setNombre]        = useState("");
-  const [tipo,          setTipo]          = useState("");
+  // Filtros iniciales desde la URL (vienen del buscador del Home)
+  const [nombre,        setNombre]        = useState(searchParams.get("nombre") || "");
+  const [tipo,          setTipo]          = useState(searchParams.get("tipo")   || "");
   const [todasCanchas,  setTodasCanchas]  = useState([]); // todas las canchas habilitadas
   const [sedes,         setSedes]         = useState([]); // todas las sedes con coordenadas
   const [loading,       setLoading]       = useState(false);

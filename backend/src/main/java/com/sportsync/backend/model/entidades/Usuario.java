@@ -1,5 +1,6 @@
 package com.sportsync.backend.model.entidades;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sportsync.backend.model.admin.EstadoUsuario;
 import jakarta.persistence.*;
 
@@ -17,6 +18,9 @@ public class Usuario {
     @Column(nullable = false, unique = true)
     private String email;
 
+    // WRITE_ONLY: el hash nunca se serializa en respuestas JSON, pero sí se acepta
+    // en el body de /register (que deserializa a Usuario). @JsonIgnore rompería el alta.
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(nullable = false)
     private String password;
 

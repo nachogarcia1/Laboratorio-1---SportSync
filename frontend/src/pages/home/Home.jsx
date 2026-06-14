@@ -26,6 +26,19 @@ function Home() {
   const [modalBeneficios, setModalBeneficios] = useState(false);
   const [errorSocio,      setErrorSocio]      = useState("");
 
+  // Búsqueda rápida (delega en /buscar)
+  const [busqueda,     setBusqueda]     = useState("");
+  const [tipoBusqueda, setTipoBusqueda] = useState("");
+
+  const irABuscar = (conFiltros) => {
+    if (!conFiltros) { navigate("/buscar"); return; }
+    const params = new URLSearchParams();
+    if (busqueda.trim()) params.set("nombre", busqueda.trim());
+    if (tipoBusqueda)    params.set("tipo", tipoBusqueda);
+    const qs = params.toString();
+    navigate(qs ? `/buscar?${qs}` : "/buscar");
+  };
+
   const formatFecha = (str) => {
     if (!str) return "—";
     const [y, m, d] = str.split("-");
@@ -98,17 +111,24 @@ function Home() {
 
         <section className="home-search">
           <h2 className="home-search__title">Busca tu Cancha</h2>
-          <div className="home-search__row">
-            <input type="text" placeholder="Buscar por sede o ubicación..." />
-            <select>
-              <option>Tipo de Cancha</option>
-              <option>Fútbol 5</option>
-              <option>Fútbol 7</option>
-              <option>Fútbol 11</option>
+          <form className="home-search__row" onSubmit={e => { e.preventDefault(); irABuscar(true); }}>
+            <input
+              type="text"
+              placeholder="Buscar por sede o ubicación..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+            />
+            <select value={tipoBusqueda} onChange={e => setTipoBusqueda(e.target.value)}>
+              <option value="">Tipo de Cancha</option>
+              <option value="5">Fútbol 5</option>
+              <option value="7">Fútbol 7</option>
+              <option value="11">Fútbol 11</option>
             </select>
-            <button>Buscar</button>
-          </div>
-          <button className="home-search__filter-btn">Filtros Avanzados</button>
+            <button type="submit">Buscar</button>
+          </form>
+          <button className="home-search__filter-btn" onClick={() => irABuscar(false)}>
+            Filtros Avanzados
+          </button>
         </section>
 
         <h2 className="home-section-title">

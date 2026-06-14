@@ -105,6 +105,11 @@ public class ReservaService {
         Usuario usuario = usuarioRepo.findById(req.getUsuarioId())
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
+        // Iluminación: solo disponible si el turno arranca a las 18:00 o más tarde (validación dura)
+        if (req.isIluminacion() && req.getHoraInicio().isBefore(LocalTime.of(18, 0))) {
+            throw new IllegalArgumentException("La iluminación solo está disponible para turnos desde las 18:00.");
+        }
+
         // Calcular precio base
         double descuento = precioService.obtenerDescuento(req.getCanchaId(), req.getHoraInicio());
         double precio    = cancha.getPrecioBase() * (1 - descuento);
@@ -122,11 +127,21 @@ public class ReservaService {
         reserva.setPrecioBase(cancha.getPrecioBase());
         reserva.setDescuentoAplicado(descuento);
 
-        // Agregar equipamiento si hay
+        // Agregar equipamiento si hay (validando disponibilidad y stock)
         if (req.getEquipamiento() != null && !req.getEquipamiento().isEmpty()) {
             for (CrearReservaRequest.ItemCantidad ic : req.getEquipamiento()) {
                 ItemEquipamiento item = itemRepo.findById(ic.getItemId())
                         .orElseThrow(() -> new UsuarioNoEncontradoException("Item no encontrado."));
+                if (!item.isDisponible()) {
+                    throw new IllegalStateException("El extra '" + item.getNombre() + "' no está disponible.");
+                }
+                if (ic.getCantidad() <= 0) {
+                    throw new IllegalArgumentException("La cantidad de '" + item.getNombre() + "' debe ser mayor a 0.");
+                }
+                if (ic.getCantidad() > item.getStock()) {
+                    throw new IllegalStateException("No hay stock suficiente de '" + item.getNombre()
+                            + "' (disponible: " + item.getStock() + ").");
+                }
                 precio += item.getPrecioPorUnidad() * ic.getCantidad();
             }
         }

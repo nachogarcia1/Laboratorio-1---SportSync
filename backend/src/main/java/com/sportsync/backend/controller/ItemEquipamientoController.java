@@ -18,10 +18,11 @@ public class ItemEquipamientoController {
         this.service = service;
     }
 
-    // GET /equipamiento — listado público
+    // GET /equipamiento — listado público.
+    // Con ?sedeId=X devuelve los extras de esa sede + los globales; sin param, todos los disponibles.
     @GetMapping
-    public List<ItemEquipamiento> listar() {
-        return service.listarDisponibles();
+    public List<ItemEquipamiento> listar(@RequestParam(required = false) Long sedeId) {
+        return sedeId != null ? service.listarParaSede(sedeId) : service.listarDisponibles();
     }
 
     // GET /equipamiento/admin/todos — admin
@@ -31,9 +32,19 @@ public class ItemEquipamientoController {
     }
 
     // POST /equipamiento — admin
+    // Body: { nombre, precio, stock, disponible, sedeId? }  (sedeId null = ítem global)
     @PostMapping
-    public ResponseEntity<?> crear(@RequestBody ItemEquipamiento item) {
-        return ResponseEntity.ok(service.crear(item));
+    public ResponseEntity<?> crear(@RequestBody Map<String, Object> body) {
+        try {
+            String nombre   = (String) body.get("nombre");
+            double precio   = body.get("precio") != null ? ((Number) body.get("precio")).doubleValue() : 0;
+            int stock       = body.get("stock") != null ? ((Number) body.get("stock")).intValue() : 0;
+            boolean activo  = body.get("disponible") == null || Boolean.TRUE.equals(body.get("disponible"));
+            Long sedeId     = body.get("sedeId") != null ? ((Number) body.get("sedeId")).longValue() : null;
+            return ResponseEntity.ok(service.crear(nombre, precio, stock, activo, sedeId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     // PUT /equipamiento/{id} — admin
@@ -41,10 +52,10 @@ public class ItemEquipamientoController {
     public ResponseEntity<?> editar(@PathVariable Long id,
                                     @RequestBody Map<String, Object> body) {
         try {
-            String nombre = (String) body.get("nombre");
-            Double precio = body.get("precio") != null
-                    ? ((Number) body.get("precio")).doubleValue() : null;
-            return ResponseEntity.ok(service.editar(id, nombre, precio));
+            String nombre  = (String) body.get("nombre");
+            Double precio  = body.get("precio") != null ? ((Number) body.get("precio")).doubleValue() : null;
+            Integer stock  = body.get("stock")  != null ? ((Number) body.get("stock")).intValue()    : null;
+            return ResponseEntity.ok(service.editar(id, nombre, precio, stock));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
