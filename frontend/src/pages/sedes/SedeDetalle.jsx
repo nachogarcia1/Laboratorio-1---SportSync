@@ -52,6 +52,8 @@ function SedeDetalle() {
   const [descuentosMap,  setDescuentosMap]  = useState({});
   const [precioModal,    setPrecioModal]    = useState(null);
   const [loadingPrecio,  setLoadingPrecio]  = useState(false);
+  const [extras,         setExtras]         = useState([]);   // ítems disponibles en la sede
+  const [cantidades,     setCantidades]     = useState({});   // { itemId: cantidad }
 
   const usuario = (() => {
     try { return JSON.parse(sessionStorage.getItem("usuario")); }
@@ -138,6 +140,14 @@ function SedeDetalle() {
       .catch(() => {});
   }, []);
 
+  // Extras disponibles en esta sede (propios + globales)
+  useEffect(() => {
+    if (!id) return;
+    apiFetch(`/equipamiento?sedeId=${id}`)
+      .then(data => setExtras(Array.isArray(data) ? data : []))
+      .catch(() => setExtras([]));
+  }, [id]);
+
   const fecha = new Date();
   fecha.setDate(fecha.getDate() + offset);
   const fechaFormateada = `${DIAS[fecha.getDay()]} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`;
@@ -210,11 +220,29 @@ function SedeDetalle() {
     setBookingError("");
     setIluminacion(false);
     setPrecioModal(null);
+    setCantidades({});
+  }
+
+  // ¿El turno permite iluminación? Solo desde las 18:00.
+  function permiteIluminacion(horaInicio) {
+    return parseInt(horaInicio) >= 18;
+  }
+
+  // Total de extras (ítems) seleccionados
+  function totalExtras() {
+    return extras.reduce((acc, it) => acc + (cantidades[it.id] || 0) * it.precioPorUnidad, 0);
+  }
+
+  function setCantidad(itemId, cantidad, stock) {
+    const c = Math.max(0, Math.min(cantidad, stock));
+    setCantidades(prev => ({ ...prev, [itemId]: c }));
   }
 
   async function handleAbrirModal(canchaId, tipo, horaInicio, horaFin) {
     setModal({ canchaId, tipo, horaInicio, horaFin });
     setPrecioModal(null);
+    setCantidades({});
+    setIluminacion(false);
     setLoadingPrecio(true);
     try {
       const data = await apiFetch(`/reservas/precio-preview?canchaId=${canchaId}&hora=${horaInicio}`);
@@ -230,6 +258,9 @@ function SedeDetalle() {
     setBookingStatus("loading");
     setBookingError("");
     try {
+      const equipamiento = extras
+        .filter(it => (cantidades[it.id] || 0) > 0)
+        .map(it => ({ itemId: it.id, cantidad: cantidades[it.id] }));
       await apiFetch("/reservas", {
         method: "POST",
         body: JSON.stringify({
@@ -238,8 +269,8 @@ function SedeDetalle() {
           fecha: toFechaISO(offset),
           horaInicio: modal.horaInicio + ":00",
           horaFin: modal.horaFin + ":00",
-          iluminacion,
-          equipamiento: []
+          iluminacion: iluminacion && permiteIluminacion(modal.horaInicio),
+          equipamiento
         })
       });
       setBookingStatus("success");
@@ -406,21 +437,54 @@ function SedeDetalle() {
                         ) : (
                           <p>Precio cancha: <strong>${precioModal.precioFinal.toLocaleString("es-AR")}</strong></p>
                         )}
-                        {iluminacion && <p className="modal-precio__extra">Iluminación: +$500</p>}
+                        {totalExtras() > 0 && <p className="modal-precio__extra">Extras: +${totalExtras().toLocaleString("es-AR")}</p>}
+                        {iluminacion && permiteIluminacion(modal.horaInicio) && <p className="modal-precio__extra">Iluminación: +$500</p>}
                         <p className="modal-precio__total">
-                          Total: <strong>${(precioModal.precioFinal + (iluminacion ? 500 : 0)).toLocaleString("es-AR")}</strong>
+                          Total: <strong>${(precioModal.precioFinal + totalExtras() + (iluminacion && permiteIluminacion(modal.horaInicio) ? 500 : 0)).toLocaleString("es-AR")}</strong>
                         </p>
                       </div>
                     )}
                   </div>
-                  <label className="modal-iluminacion">
-                    <input
-                      type="checkbox"
-                      checked={iluminacion}
-                      onChange={e => setIluminacion(e.target.checked)}
-                    />
-                    Iluminación (+$500)
-                  </label>
+
+                  {/* ── Extras ── */}
+                  <div className="modal-extras">
+                    <p className="modal-extras__titulo">Extras</p>
+                    {extras.length === 0 ? (
+                      <p className="modal-extras__vacio">No hay extras disponibles en esta sede.</p>
+                    ) : (
+                      extras.map(it => (
+                        <div key={it.id} className="modal-extra-row">
+                          <span className="modal-extra-row__nombre">{it.nombre}</span>
+                          <span className="modal-extra-row__precio">${it.precioPorUnidad.toLocaleString("es-AR")} c/u</span>
+                          <div className="modal-extra-row__qty">
+                            <button type="button"
+                              onClick={() => setCantidad(it.id, (cantidades[it.id] || 0) - 1, it.stock)}
+                              disabled={(cantidades[it.id] || 0) <= 0}>−</button>
+                            <span>{cantidades[it.id] || 0}</span>
+                            <button type="button"
+                              onClick={() => setCantidad(it.id, (cantidades[it.id] || 0) + 1, it.stock)}
+                              disabled={(cantidades[it.id] || 0) >= it.stock}>+</button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Iluminación: solo desde las 18:00 */}
+                  {permiteIluminacion(modal.horaInicio) ? (
+                    <label className="modal-iluminacion">
+                      <input
+                        type="checkbox"
+                        checked={iluminacion}
+                        onChange={e => setIluminacion(e.target.checked)}
+                      />
+                      Iluminación (+$500)
+                    </label>
+                  ) : (
+                    <p className="modal-iluminacion modal-iluminacion--nodisp">
+                      💡 La iluminación está disponible solo para turnos desde las 18:00.
+                    </p>
+                  )}
                   {bookingStatus === "error" && (
                     <p className="modal-error">{bookingError}</p>
                   )}
