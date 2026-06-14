@@ -6,6 +6,7 @@ import { apiFetch } from "../../utils/api";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Admin.css";
+import { Client } from "@stomp/stompjs";
 
 // Fix iconos Leaflet con Vite/bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
   { id: "ratings",    label: "Historial de Ratings", icon: "⭐" },
   { id: "precios", label: "Precios Inteligentes", icon: "🏷️" },
   { id: "extras",  label: "Gestión de Extras",    icon: "🎽" },
+  { id: "chat", label: "Chat Soporte", icon: "💬" },
 ];
 
 const ACTIVIDAD = [
@@ -89,6 +91,13 @@ function Admin() {
   const [extrasAdmin,    setExtrasAdmin]    = useState([]);
   const [loadingExtras,  setLoadingExtras]  = useState(false);
   const [formExtra,      setFormExtra]      = useState({ nombre: "", precio: "", stock: "", sedeId: "", error: "" });
+  const [conversaciones,  setConversaciones]  = useState([]);
+  const [chatActivo,      setChatActivo]      = useState(null);
+  const [mensajesChat,    setMensajesChat]    = useState([]);
+  const [textoAdmin,      setTextoAdmin]      = useState("");
+  const chatActivoRef  = useRef(null);
+  const stompAdminRef  = useRef(null);
+  const chatBottomRef  = useRef(null);
 
   // Modal genérico de confirmación
   const [modalConfirmar, setModalConfirmar] = useState(null);
@@ -263,7 +272,50 @@ function Admin() {
         .finally(() => setLoadingExtras(false));
       apiFetch("/sedes/admin/todas").then(setSedes).catch(console.error);
     }
+
+    if (seccion === "chat") {
+      apiFetch("/chat/conversaciones").then(setConversaciones).catch(console.error);
+    }
   }, [seccion]);
+
+  useEffect(() => {
+    if (seccion !== "chat") {
+      stompAdminRef.current?.deactivate();
+      stompAdminRef.current = null;
+      return;
+    }
+
+    const client = new Client({
+      brokerURL: "ws://localhost:8080/ws",
+      onConnect: () => {
+        client.subscribe("/topic/chat/admin", (frame) => {
+          const msg = JSON.parse(frame.body);
+          apiFetch("/chat/conversaciones").then(setConversaciones).catch(console.error);
+          if (chatActivoRef.current === msg.usuarioId) {
+            setMensajesChat(prev =>
+              prev.some(m => m.id === msg.id) ? prev : [...prev, msg]
+            );
+          }
+        });
+      },
+    });
+
+    client.activate();
+    stompAdminRef.current = client;
+
+    return () => {
+      stompAdminRef.current?.deactivate();
+      stompAdminRef.current = null;
+    };
+  }, [seccion]);
+
+  useEffect(() => {
+    chatActivoRef.current = chatActivo;
+  }, [chatActivo]);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mensajesChat]);
 
   const handleToggleSede = async (id) => {
     try {
@@ -563,6 +615,24 @@ function Admin() {
       }
     });
   };
+
+
+  function handleAbrirConversacion(usuarioId) {
+    setChatActivo(usuarioId);
+    setTextoAdmin("");
+    apiFetch(`/chat/historial/${usuarioId}`).then(setMensajesChat).catch(console.error);
+    apiFetch(`/chat/leer/${usuarioId}`, { method: "POST" }).catch(console.error);
+    apiFetch("/chat/conversaciones").then(setConversaciones).catch(console.error);
+  }
+
+  function handleAdminResponder() {
+    if (!textoAdmin.trim() || !chatActivo || !stompAdminRef.current?.connected) return;
+    stompAdminRef.current.publish({
+      destination: "/app/chat/responder",
+      body: JSON.stringify({ usuarioId: chatActivo, contenido: textoAdmin.trim() }),
+    });
+    setTextoAdmin("");
+  }
 
   return (
     <div className="admin-page">
@@ -1041,7 +1111,107 @@ function Admin() {
               </section>
             )}
 
-            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && seccion !== "extras" && (
+
+            {seccion === "chat" && (
+              <section className="admin-section">
+                <h2 className="admin-section__title">Chat Soporte</h2>
+                <div style={{ display: "flex", gap: "1.5rem", height: "60vh" }}>
+
+                  {/* Lista de conversaciones */}
+                  <div style={{ width: "280px", borderRight: "1px solid #e5e7eb", overflowY: "auto" }}>
+                    {conversaciones.length === 0 && (
+                      <p style={{ color: "#9ca3af", padding: "1rem", fontSize: "0.9rem" }}>No hay conversaciones aún.</p>
+                    )}
+                    {conversaciones.map(c => (
+                      <div
+                        key={c.usuarioId}
+                        onClick={() => handleAbrirConversacion(c.usuarioId)}
+                        style={{
+                          padding: "0.85rem 1rem",
+                          cursor: "pointer",
+                          borderBottom: "1px solid #f3f4f6",
+                          background: chatActivo === c.usuarioId ? "#f0fdf4" : "#fff",
+                          borderLeft: chatActivo === c.usuarioId ? "3px solid #16a34a" : "3px solid transparent",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{c.usuarioNombre}</span>
+                          {c.noLeidos > 0 && (
+                            <span style={{ background: "#16a34a", color: "#fff", borderRadius: "999px", fontSize: "0.72rem", padding: "2px 7px", fontWeight: 700 }}>
+                              {c.noLeidos}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#6b7280", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                          {c.ultimoMensaje}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Panel de mensajes */}
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                    {!chatActivo ? (
+                      <p style={{ color: "#9ca3af", margin: "auto", fontSize: "0.95rem" }}>Seleccioná una conversación</p>
+                    ) : (
+                      <>
+                        <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                          {mensajesChat.map((m, i) => (
+                            <div
+                              key={m.id || i}
+                              style={{
+                                alignSelf: m.remitente === "ADMIN" ? "flex-end" : "flex-start",
+                                maxWidth: "70%",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: m.remitente === "ADMIN" ? "flex-end" : "flex-start",
+                              }}
+                            >
+                              <span style={{ fontSize: "0.7rem", color: "#6b7280", marginBottom: "2px" }}>
+                                {m.remitente === "ADMIN" ? "Vos (Admin)" : "Usuario"}
+                              </span>
+                              <div style={{
+                                padding: "0.5rem 0.8rem",
+                                borderRadius: "12px",
+                                background: m.remitente === "ADMIN" ? "#16a34a" : "#f3f4f6",
+                                color: m.remitente === "ADMIN" ? "#fff" : "#111827",
+                                fontSize: "0.88rem",
+                                lineHeight: 1.4,
+                              }}>
+                                {m.contenido}
+                              </div>
+                              <span style={{ fontSize: "0.7rem", color: "#9ca3af", marginTop: "2px" }}>
+                                {new Date(m.timestamp).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                          ))}
+                          <div ref={chatBottomRef} />
+                        </div>
+                        <div style={{ display: "flex", gap: "0.75rem", padding: "0.75rem", borderTop: "1px solid #e5e7eb" }}>
+                          <textarea
+                            style={{ flex: 1, border: "1px solid #d1d5db", borderRadius: "8px", padding: "0.5rem 0.75rem", fontSize: "0.88rem", resize: "none", fontFamily: "inherit" }}
+                            placeholder="Respondé al usuario..."
+                            value={textoAdmin}
+                            onChange={e => setTextoAdmin(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAdminResponder(); } }}
+                            rows={2}
+                          />
+                          <button
+                            onClick={handleAdminResponder}
+                            disabled={!textoAdmin.trim()}
+                            style={{ background: "#16a34a", color: "#fff", border: "none", borderRadius: "8px", padding: "0 1.25rem", fontWeight: 600, cursor: "pointer" }}
+                          >
+                            Enviar
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && seccion !== "extras" && seccion !== "chat" && (
               <div className="admin-wip"><p>Sección en desarrollo</p></div>
             )}
 

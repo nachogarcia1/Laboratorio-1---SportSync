@@ -48,6 +48,7 @@ public class Security {
                                 org.springframework.http.HttpMethod.GET,
                                 "/criticas/**"
                         ).permitAll()
+                        .requestMatchers("/ws/**").permitAll()
 
                         /*autenticados*/
                         .requestMatchers(
@@ -84,6 +85,7 @@ public class Security {
                                 "/reservas/usuario/*/sin-calificar-admin"
                         ).hasRole("ADMIN")
                         .requestMatchers("/precios/**").hasRole("ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/chat/conversaciones").hasRole("ADMIN")
 
                         /*cualquier otra autenticados*/
                         .anyRequest().authenticated()

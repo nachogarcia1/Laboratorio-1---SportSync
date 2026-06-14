@@ -14,6 +14,7 @@ import CalificarExperiencia from "./pages/calificar/CalificarExperiencia";
 import MisCalificaciones from "./pages/calificaciones/MisCalificaciones";
 import BuscarCanchas from "./pages/buscar/BuscarCanchas";
 import VerificarEmail from "./pages/verificar/VerificarEmail";
+import Chat from "./pages/chat/Chat";
 
 function App() {
   return (
@@ -89,6 +90,12 @@ function App() {
         <Route path="/buscar" element={
           <ProtectedRoute>
             <BuscarCanchas />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/chat" element={
+          <ProtectedRoute>
+            <Chat />
           </ProtectedRoute>
         } />
 
