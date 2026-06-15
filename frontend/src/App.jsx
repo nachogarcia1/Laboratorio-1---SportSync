@@ -14,6 +14,8 @@ import CalificarExperiencia from "./pages/calificar/CalificarExperiencia";
 import MisCalificaciones from "./pages/calificaciones/MisCalificaciones";
 import BuscarCanchas from "./pages/buscar/BuscarCanchas";
 import VerificarEmail from "./pages/verificar/VerificarEmail";
+import PagoResultado from "./pages/pago/PagoResultado";
+import PagoSimular from "./pages/pago/PagoSimular";
 
 function App() {
   return (
@@ -41,6 +43,18 @@ function App() {
         <Route path="/home" element={
           <ProtectedRoute>
             <Home />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/pago/resultado" element={
+          <ProtectedRoute>
+            <PagoResultado />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/pago/simular" element={
+          <ProtectedRoute>
+            <PagoSimular />
           </ProtectedRoute>
         } />
 
