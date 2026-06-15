@@ -171,7 +171,6 @@
   font-size: 14px;
   font-weight: 700;
   color: #18263d;
-  width: 48px;
   flex-shrink: 0;
 }
 
@@ -184,7 +183,34 @@
   text-align: center;
 }
 
-.turno-badge--normal  { background: #e9ecef; color: #39414d; }
+.turno-badge--normal {
+  background: #e9ecef;
+  color: #39414d;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.turno-badge__disponible {
+  text-align: center;
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.turno-badge__descuento {
+  position: absolute;
+  right: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #856404;
+  background: #fff3cd;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 .turno-badge--popular { background: #fff3cd; color: #856404; }
 .turno-badge--socio   { background: #d4edda; color: #155724; }
 .turno-badge--vencido { background: #f1f3f5; color: #adb5bd; font-style: italic; }
@@ -424,4 +450,28 @@
   font-size: 0.75rem;
   color: #16a34a;
   font-weight: 600;
+}
+
+.turno-rango {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.turno-sep {
+  font-size: 13px;
+  color: #adb5bd;
+}
+
+.turno-hora-fin {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.turno-badge--empty {
+  background: transparent !important;
+  flex: 1;
 }

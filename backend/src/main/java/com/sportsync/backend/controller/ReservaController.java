@@ -92,9 +92,10 @@ public class ReservaController {
     public ResponseEntity<?> precioPreview(
             @RequestParam Long canchaId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora,
-            @RequestParam(required = false) Long usuarioId) {
+            @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         try {
-            return ResponseEntity.ok(service.calcularPrecioPreview(canchaId, hora, usuarioId));
+            return ResponseEntity.ok(service.calcularPrecioPreview(canchaId, hora, usuarioId, fecha));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
