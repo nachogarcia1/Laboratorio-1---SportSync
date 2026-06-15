@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.sportsync.backend.model.entidades.Rol;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,6 +40,12 @@ public class ReservaService {
     private static final int HORAS_MIN_CANCELACION = 2;
     // Precio fijo de iluminación
     private static final double PRECIO_ILUMINACION = 500.0;
+
+    private static final double DESCUENTO_SOCIO       = 0.10;
+    private static final int    MAX_RESERVAS_SOCIO     = 5;
+    private static final int    MAX_RESERVAS_NO_SOCIO  = 2;
+    private static final int    DIAS_ANTICIPO_SOCIO    = 30;
+    private static final int    DIAS_ANTICIPO_NO_SOCIO = 7;
 
     // Antelación mínima (minutos) para reservar un turno; en la tz de la sede
     @Value("${sportsync.reservas.antelacion-minima-minutos:30}")
@@ -115,6 +122,27 @@ public class ReservaService {
         Usuario usuario = usuarioRepo.findById(req.getUsuarioId())
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Usuario no encontrado."));
 
+        boolean esSocio = usuario.getRol() == Rol.SOCIO;
+
+        // Validar días máximos de anticipación
+        int diasMaximos = esSocio ? DIAS_ANTICIPO_SOCIO : DIAS_ANTICIPO_NO_SOCIO;
+        if (req.getFecha().isAfter(LocalDate.now().plusDays(diasMaximos))) {
+            throw new IllegalArgumentException(
+                    "Solo podés reservar con hasta " + diasMaximos + " días de anticipación." +
+                            (!esSocio ? " Los socios pueden reservar hasta " + DIAS_ANTICIPO_SOCIO + " días antes." : "")
+            );
+        }
+
+        // Validar máximo de reservas activas
+        int maxReservas = esSocio ? MAX_RESERVAS_SOCIO : MAX_RESERVAS_NO_SOCIO;
+        long reservasActivas = reservaRepo.countByUsuarioIdAndEstado(req.getUsuarioId(), EstadoReserva.ACTIVA);
+        if (reservasActivas >= maxReservas) {
+            throw new IllegalStateException(
+                    "Alcanzaste el límite de " + maxReservas + " reservas activas." +
+                            (!esSocio ? " Los socios pueden tener hasta " + MAX_RESERVAS_SOCIO + "." : "")
+            );
+        }
+
         // Iluminación: solo disponible si el turno arranca a las 18:00 o más tarde (validación dura)
         if (req.isIluminacion() && req.getHoraInicio().isBefore(LocalTime.of(18, 0))) {
             throw new IllegalArgumentException("La iluminación solo está disponible para turnos desde las 18:00.");
@@ -123,7 +151,8 @@ public class ReservaService {
         // Calcular precio base
         double descuento = precioService.obtenerDescuento(req.getCanchaId(), req.getHoraInicio());
         double precio    = cancha.getPrecioBase() * (1 - descuento);
-        if (req.isIluminacion()) precio += PRECIO_ILUMINACION;
+        if (esSocio) precio *= (1 - DESCUENTO_SOCIO);
+        if (req.isIluminacion()) precio += PRECIO_ILUMINACION * (esSocio ? (1 - DESCUENTO_SOCIO) : 1.0);
 
         // Crear reserva
         Reserva reserva = new Reserva();
@@ -152,7 +181,9 @@ public class ReservaService {
                     throw new IllegalStateException("No hay stock suficiente de '" + item.getNombre()
                             + "' (disponible: " + item.getStock() + ").");
                 }
-                precio += item.getPrecioPorUnidad() * ic.getCantidad();
+                double precioItem = item.getPrecioPorUnidad() * ic.getCantidad();
+                if (esSocio) precioItem *= (1 - DESCUENTO_SOCIO);
+                precio += precioItem;
             }
         }
 
@@ -244,17 +275,27 @@ public class ReservaService {
         return reservaRepo.save(reserva);
     }
 
-    public Map<String, Object> calcularPrecioPreview(Long canchaId, LocalTime hora) {
+    public Map<String, Object> calcularPrecioPreview(Long canchaId, LocalTime hora, Long usuarioId) {
         Cancha cancha = canchaRepo.findById(canchaId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Cancha no encontrada."));
 
-        double descuento   = precioService.obtenerDescuento(canchaId, hora);
-        double precioFinal = cancha.getPrecioBase() * (1 - descuento);
+        boolean esSocio = false;
+        if (usuarioId != null) {
+            Usuario u = usuarioRepo.findById(usuarioId).orElse(null);
+            esSocio = u != null && u.getRol() == Rol.SOCIO;
+        }
+
+        double descuento                   = precioService.obtenerDescuento(canchaId, hora);
+        double precioTrasPrecioInteligente = cancha.getPrecioBase() * (1 - descuento);
+        double precioFinal                 = esSocio ? precioTrasPrecioInteligente * (1 - DESCUENTO_SOCIO) : precioTrasPrecioInteligente;
 
         Map<String, Object> result = new HashMap<>();
-        result.put("precioBase",          cancha.getPrecioBase());
-        result.put("descuentoPorcentaje", Math.round(descuento * 100)); // ej: 15 = 15%
-        result.put("precioFinal",         precioFinal);
+        result.put("precioBase",                  cancha.getPrecioBase());
+        result.put("descuentoPorcentaje",         Math.round(descuento * 100));
+        result.put("precioTrasPrecioInteligente", precioTrasPrecioInteligente);
+        result.put("precioFinal",                 precioFinal);
+        result.put("esSocio",                     esSocio);
+        result.put("descuentoSocio",              esSocio ? 10 : 0);
         return result;
     }
 

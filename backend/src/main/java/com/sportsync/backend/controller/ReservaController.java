@@ -91,9 +91,10 @@ public class ReservaController {
     @GetMapping("/precio-preview")
     public ResponseEntity<?> precioPreview(
             @RequestParam Long canchaId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime hora,
+            @RequestParam(required = false) Long usuarioId) {
         try {
-            return ResponseEntity.ok(service.calcularPrecioPreview(canchaId, hora));
+            return ResponseEntity.ok(service.calcularPrecioPreview(canchaId, hora, usuarioId));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
