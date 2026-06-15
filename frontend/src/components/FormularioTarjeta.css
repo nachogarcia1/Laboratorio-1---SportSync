@@ -1,0 +1,62 @@
+.tarjeta-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.tarjeta-form label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #5f6773;
+  margin-top: 6px;
+}
+
+.tarjeta-form input,
+.tarjeta-form select {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+.tarjeta-form input:focus,
+.tarjeta-form select:focus { border-color: var(--blue, #2f66e8); }
+
+.tarjeta-form__row {
+  display: flex;
+  gap: 12px;
+}
+.tarjeta-form__row > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tarjeta-form__error {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.tarjeta-form__btn {
+  margin-top: 14px;
+  background: var(--blue, #2f66e8);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tarjeta-form__btn:hover:not(:disabled) { background: var(--blue-dark, #234fc0); }
+.tarjeta-form__btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.tarjeta-form__nota {
+  font-size: 11.5px;
+  color: #9aa1ad;
+  text-align: center;
+  margin: 10px 0 0;
+}

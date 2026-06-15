@@ -68,6 +68,18 @@ public class PagoController {
         }
     }
 
+    // POST /pagos/tarjeta?reservaId=X — procesa el pago con tarjeta (pasarela mock).
+    // Body: DatosTarjeta. Devuelve el ResultadoPago (aprobado/rechazado/datos inválidos).
+    @PostMapping("/tarjeta")
+    public ResponseEntity<?> pagarConTarjeta(@RequestParam Long reservaId,
+                                             @RequestBody com.sportsync.backend.dto.DatosTarjeta tarjeta) {
+        try {
+            return ResponseEntity.ok(service.procesarPagoTarjeta(reservaId, tarjeta));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // POST /pagos/simular — (solo dev) fija el resultado del pago y aplica la transición de la reserva.
     // ?reservaId=X&resultado=APROBADO|RECHAZADO|PENDIENTE|...
     @PostMapping("/simular")

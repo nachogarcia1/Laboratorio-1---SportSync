@@ -16,6 +16,7 @@ import BuscarCanchas from "./pages/buscar/BuscarCanchas";
 import VerificarEmail from "./pages/verificar/VerificarEmail";
 import PagoResultado from "./pages/pago/PagoResultado";
 import PagoSimular from "./pages/pago/PagoSimular";
+import PagoTarjeta from "./pages/pago/PagoTarjeta";
 import Chat from "./pages/chat/Chat";
 
 function App() {
@@ -56,6 +57,12 @@ function App() {
         <Route path="/pago/simular" element={
           <ProtectedRoute>
             <PagoSimular />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/pago/tarjeta" element={
+          <ProtectedRoute>
+            <PagoTarjeta />
           </ProtectedRoute>
         } />
 

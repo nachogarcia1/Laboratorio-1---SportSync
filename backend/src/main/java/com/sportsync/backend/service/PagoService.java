@@ -45,9 +45,12 @@ public class PagoService {
     @Value("${sportsync.pagos.simulacion:false}")
     private boolean simulacionForzada;
 
-    public PagoService(PagoRepository pagoRepo, ReservaService reservaService) {
+    private final PasarelaPago pasarelaPago;
+
+    public PagoService(PagoRepository pagoRepo, ReservaService reservaService, PasarelaPago pasarelaPago) {
         this.pagoRepo = pagoRepo;
         this.reservaService = reservaService;
+        this.pasarelaPago = pasarelaPago;
     }
 
     public record IniciarResult(Long reservaId, Long pagoId, String initPoint, String preferenciaId) {}
@@ -74,6 +77,14 @@ public class PagoService {
         pago.setMetodo(metodo);
         pago.setEstado(EstadoPago.PENDIENTE);
         pago = pagoRepo.save(pago);
+
+        // Pago con tarjeta (crédito/débito): formulario propio + pasarela mock.
+        if (metodo == MetodoPago.TARJETA_CREDITO || metodo == MetodoPago.TARJETA_DEBITO) {
+            pago.setPreferenciaId("TARJETA");
+            pagoRepo.save(pago);
+            String url = frontendUrl + "/pago/tarjeta?reserva=" + reserva.getId();
+            return new IniciarResult(reserva.getId(), pago.getId(), url, "TARJETA");
+        }
 
         // Modo simulación (dev): checkout local en vez de Mercado Pago
         if (usarSimulacion()) {
@@ -112,6 +123,10 @@ public class PagoService {
 
             return new IniciarResult(reserva.getId(), pago.getId(),
                     preference.getInitPoint(), preference.getId());
+        } catch (com.mercadopago.exceptions.MPApiException e) {
+            // MP devuelve el detalle real en el cuerpo de la respuesta (no en getMessage)
+            String detalle = e.getApiResponse() != null ? e.getApiResponse().getContent() : e.getMessage();
+            throw new IllegalStateException("No se pudo iniciar el pago con Mercado Pago: " + detalle, e);
         } catch (Exception e) {
             throw new IllegalStateException("No se pudo iniciar el pago con Mercado Pago: " + e.getMessage(), e);
         }
@@ -185,6 +200,32 @@ public class PagoService {
             reservaService.cancelarPorPago(pago.getReserva());
         }
         return pago;
+    }
+
+    /**
+     * Procesa el pago con tarjeta de una reserva pendiente, usando la pasarela mock.
+     * Solo confirma la reserva si el pago es APROBADO. Rechazo/datos inválidos dejan
+     * la reserva PENDIENTE_PAGO (reintentable) y devuelven el resultado para el front.
+     */
+    @Transactional
+    public com.sportsync.backend.dto.ResultadoPago procesarPagoTarjeta(
+            Long reservaId, com.sportsync.backend.dto.DatosTarjeta tarjeta) {
+        Pago pago = pagoRepo.findByReservaId(reservaId)
+                .orElseThrow(() -> new IllegalStateException("No hay pago para esa reserva."));
+
+        com.sportsync.backend.dto.ResultadoPago resultado = pasarelaPago.cobrar(
+                new com.sportsync.backend.dto.SolicitudPago(
+                        BigDecimal.valueOf(pago.getMonto()),
+                        "Reserva de cancha SportSync",
+                        tarjeta));
+
+        if (resultado.fueAprobado()) {
+            pago.setProveedorId(resultado.getTransaccionId());
+            pago.setEstado(EstadoPago.APROBADO);
+            pagoRepo.save(pago);
+            reservaService.confirmarReserva(pago.getReserva());
+        }
+        return resultado;
     }
 
     public Pago obtenerPorReserva(Long reservaId) {
