@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { id: "ratings",    label: "Historial de Ratings", icon: "⭐" },
   { id: "precios", label: "Precios Inteligentes", icon: "🏷️" },
   { id: "extras",  label: "Gestión de Extras",    icon: "🎽" },
+  { id: "reportes", label: "Reportes",            icon: "📊" },
   { id: "chat", label: "Chat Soporte", icon: "💬" },
 ];
 
@@ -91,6 +92,12 @@ function Admin() {
   const [extrasAdmin,    setExtrasAdmin]    = useState([]);
   const [loadingExtras,  setLoadingExtras]  = useState(false);
   const [formExtra,      setFormExtra]      = useState({ nombre: "", precio: "", stock: "", sedeId: "", error: "" });
+  const hoy = new Date();
+  const [repMes,         setRepMes]         = useState(hoy.getMonth() + 1);
+  const [repAnio,        setRepAnio]        = useState(hoy.getFullYear());
+  const [reporte,        setReporte]        = useState(null);
+  const [loadingReporte, setLoadingReporte] = useState(false);
+  const [errorReporte,   setErrorReporte]   = useState("");
   const [conversaciones,  setConversaciones]  = useState([]);
   const [chatActivo,      setChatActivo]      = useState(null);
   const [mensajesChat,    setMensajesChat]    = useState([]);
@@ -633,6 +640,38 @@ function Admin() {
     });
     setTextoAdmin("");
   }
+
+  // ── Reportes ───────────────────────────────────────────────────────────────
+  const generarReporte = async () => {
+    setErrorReporte(""); setLoadingReporte(true); setReporte(null);
+    try {
+      setReporte(await apiFetch(`/reportes/reservas?mes=${repMes}&anio=${repAnio}`));
+    } catch (e) {
+      setErrorReporte(e.message);
+    } finally {
+      setLoadingReporte(false);
+    }
+  };
+
+  const descargarCsv = async () => {
+    setErrorReporte("");
+    try {
+      const token = sessionStorage.getItem("token");
+      const resp = await fetch(`http://localhost:8080/reportes/reservas/csv?mes=${repMes}&anio=${repAnio}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!resp.ok) throw new Error("No se pudo descargar el CSV.");
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-${repAnio}-${String(repMes).padStart(2, "0")}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErrorReporte(e.message);
+    }
+  };
 
   return (
     <div className="admin-page">
@@ -1211,7 +1250,98 @@ function Admin() {
               </section>
             )}
 
-            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && seccion !== "extras" && seccion !== "chat" && (
+            {seccion === "reportes" && (
+              <section className="admin-section">
+                <h2 className="admin-section__title">Reporte mensual de reservas</h2>
+
+                <div style={{ display: "flex", gap: "0.6rem", alignItems: "flex-end", flexWrap: "wrap", marginBottom: "1.25rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "0.8rem", color: "#6b7280" }}>Mes</label>
+                    <select value={repMes} onChange={e => setRepMes(Number(e.target.value))}>
+                      {["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
+                        .map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", width: "100px" }}>
+                    <label style={{ fontSize: "0.8rem", color: "#6b7280" }}>Año</label>
+                    <input type="number" value={repAnio} min="2000" max="2100"
+                      onChange={e => setRepAnio(Number(e.target.value))} />
+                  </div>
+                  <button className="modal-btn-save" onClick={generarReporte} disabled={loadingReporte}>
+                    {loadingReporte ? "Generando..." : "Generar reporte"}
+                  </button>
+                  {reporte && (
+                    <button className="modal-btn-save" style={{ background: "#16a34a" }} onClick={descargarCsv}>
+                      ⬇ Exportar CSV
+                    </button>
+                  )}
+                </div>
+
+                {errorReporte && <p style={{ color: "#dc2626", fontSize: "0.9rem" }}>{errorReporte}</p>}
+
+                {loadingReporte ? (
+                  <p style={{ color: "#6b7280" }}>Cargando...</p>
+                ) : reporte && (
+                  <>
+                    {/* Totales */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
+                      {[
+                        ["Reservas", reporte.totales.cantidad],
+                        ["Confirmadas", reporte.totales.confirmadas],
+                        ["Canceladas", reporte.totales.canceladas],
+                        ["Pendientes", reporte.totales.pendientes],
+                        ["Ingresos brutos", `$${reporte.totales.ingresosBrutos.toLocaleString("es-AR")}`],
+                        ["Descuentos", `$${reporte.totales.descuentos.toLocaleString("es-AR")}`],
+                        ["Ingresos por extras", `$${reporte.totales.ingresosExtras.toLocaleString("es-AR")}`],
+                        ["Cobrado (pagos aprobados)", `$${reporte.totales.ingresosCobrados.toLocaleString("es-AR")}`],
+                      ].map(([label, val]) => (
+                        <div key={label} style={{ background: "#f9fafb", borderRadius: "8px", padding: "0.75rem 1rem" }}>
+                          <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{label}</div>
+                          <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#18263d" }}>{val}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {reporte.reservas.length === 0 ? (
+                      <p style={{ color: "#9ca3af" }}>No hay reservas en este período.</p>
+                    ) : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem", whiteSpace: "nowrap" }}>
+                          <thead>
+                            <tr style={{ background: "#f3f4f6", textAlign: "left" }}>
+                              {["ID","Usuario","Sede","Cancha","Fecha","Horario","Dur (h)","Base","Desc.","Extras","Total","Reserva","Pago","Método"]
+                                .map(h => <th key={h} style={{ padding: "0.5rem" }}>{h}</th>)}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {reporte.reservas.map(r => (
+                              <tr key={r.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                                <td style={{ padding: "0.5rem" }}>{r.id}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.usuario}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.sede}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.cancha}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.fecha}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.horaInicio}-{r.horaFin}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.duracionHoras}</td>
+                                <td style={{ padding: "0.5rem" }}>${r.precioBase.toLocaleString("es-AR")}</td>
+                                <td style={{ padding: "0.5rem" }}>${r.descuento.toLocaleString("es-AR")}</td>
+                                <td style={{ padding: "0.5rem" }}>${r.extras.toLocaleString("es-AR")}</td>
+                                <td style={{ padding: "0.5rem", fontWeight: 600 }}>${r.precioTotal.toLocaleString("es-AR")}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.estadoReserva}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.estadoPago}</td>
+                                <td style={{ padding: "0.5rem" }}>{r.metodoPago}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+
+            {seccion !== "dashboard" && seccion !== "sedes" && seccion !== "canchas" && seccion !== "usuarios" && seccion !== "ratings" && seccion !== "precios" && seccion !== "extras" && seccion !== "chat" && seccion !== "reportes" && (
               <div className="admin-wip"><p>Sección en desarrollo</p></div>
             )}
 

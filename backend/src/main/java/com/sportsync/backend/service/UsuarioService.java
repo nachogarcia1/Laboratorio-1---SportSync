@@ -20,13 +20,19 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final SuspensionRepository suspensionRepo;
     private final MembresiaRepository membresiaRepo;
+    private final PasarelaPago pasarelaPago;
+
+    @org.springframework.beans.factory.annotation.Value("${sportsync.socio.cuota:5000}")
+    private double cuotaSocio;
 
     public UsuarioService(UsuarioRepository repo, PasswordEncoder passwordEncoder,
-                          SuspensionRepository suspensionRepo, MembresiaRepository membresiaRepo) {
+                          SuspensionRepository suspensionRepo, MembresiaRepository membresiaRepo,
+                          PasarelaPago pasarelaPago) {
         this.repo = repo;
         this.passwordEncoder = passwordEncoder;
         this.suspensionRepo = suspensionRepo;
         this.membresiaRepo = membresiaRepo;
+        this.pasarelaPago = pasarelaPago;
     }
 
     public List<Usuario> listar() { return repo.findByRolNot(Rol.ADMIN); }
@@ -125,12 +131,29 @@ public class UsuarioService {
         return repo.save(usuario);
     }
 
-    public Membresia acreditarSocio(Long id) {
+    /**
+     * Acredita al usuario como socio SOLO si el pago con tarjeta es aprobado.
+     * Es @Transactional: si el pago se rechaza o los datos son inválidos, se lanza
+     * IllegalStateException y no queda ningún cambio parcial (ni rol ni membresía).
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public Membresia acreditarSocio(Long id, com.sportsync.backend.dto.DatosTarjeta tarjeta) {
         Usuario usuario = obtenerPorId(id);
         if (usuario.getRol() == Rol.ADMIN)
             throw new IllegalStateException("Los administradores no pueden acreditarse como socios.");
         if (usuario.getRol() == Rol.SOCIO)
             throw new IllegalStateException("El usuario ya es socio.");
+
+        // Cobro de la cuota de socio con la pasarela (antes de tocar el estado del usuario)
+        com.sportsync.backend.dto.ResultadoPago resultado = pasarelaPago.cobrar(
+                new com.sportsync.backend.dto.SolicitudPago(
+                        java.math.BigDecimal.valueOf(cuotaSocio),
+                        "Membresía de socio SportSync",
+                        tarjeta));
+        if (!resultado.fueAprobado()) {
+            // Rechazo o datos inválidos → no se completa la inscripción (rollback)
+            throw new IllegalStateException(resultado.getMensaje());
+        }
 
         membresiaRepo.findByUsuarioIdAndEstado(id, EstadoMembresia.ACTIVA)
                 .ifPresent(m -> { m.setEstado(EstadoMembresia.CANCELADA); membresiaRepo.save(m); });

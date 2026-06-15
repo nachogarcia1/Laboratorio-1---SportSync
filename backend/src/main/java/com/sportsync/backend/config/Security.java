@@ -31,7 +31,7 @@ public class Security {
                         /*todos*/
                         .requestMatchers("/usuarios/login", "/usuarios/register",
                                 "/usuarios/verificar", "/usuarios/reenviar-codigo",
-                                "/usuarios/oauth/google", "/error").permitAll()
+                                "/usuarios/oauth/google", "/pagos/webhook", "/error").permitAll()
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/canchas/buscar"
@@ -85,6 +85,7 @@ public class Security {
                                 "/reservas/usuario/*/sin-calificar-admin"
                         ).hasRole("ADMIN")
                         .requestMatchers("/precios/**").hasRole("ADMIN")
+                        .requestMatchers("/reportes/**").hasRole("ADMIN")
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/chat/conversaciones").hasRole("ADMIN")
 
                         /*cualquier otra autenticados*/

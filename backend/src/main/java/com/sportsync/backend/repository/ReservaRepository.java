@@ -33,6 +33,19 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     // Reservas activas de una cancha en una fecha
     List<Reserva> findByCanchaIdAndFechaAndEstado(Long canchaId, LocalDate fecha, EstadoReserva estado);
 
+    // Reporte mensual: trae todo lo necesario en una sola query (sin N+1).
+    @Query("""
+        SELECT DISTINCT r FROM Reserva r
+        JOIN FETCH r.cancha c
+        JOIN FETCH c.sede
+        JOIN FETCH r.usuario
+        LEFT JOIN FETCH r.equipamiento e
+        LEFT JOIN FETCH e.item
+        WHERE r.fecha BETWEEN :desde AND :hasta
+        ORDER BY r.fecha, r.horaInicio
+    """)
+    List<Reserva> findParaReporte(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
+
     // Validación anti-solapamiento (UC-31)
     @Query("""
         SELECT COUNT(r) > 0 FROM Reserva r

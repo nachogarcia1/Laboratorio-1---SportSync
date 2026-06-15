@@ -47,6 +47,7 @@ function SedeDetalle() {
   // Booking modal
   const [modal,         setModal]         = useState(null);
   const [iluminacion,   setIluminacion]   = useState(false);
+  const [metodo,        setMetodo]        = useState("MERCADO_PAGO");
   const [bookingStatus, setBookingStatus] = useState(null);
   const [bookingError,  setBookingError]  = useState("");
   const [descuentosMap,  setDescuentosMap]  = useState({});
@@ -266,23 +267,28 @@ function SedeDetalle() {
       const equipamiento = extras
         .filter(it => (cantidades[it.id] || 0) > 0)
         .map(it => ({ itemId: it.id, cantidad: cantidades[it.id] }));
-      await apiFetch("/reservas", {
+      // Inicia el pago: crea la reserva PENDIENTE_PAGO y devuelve el checkout de Mercado Pago
+      const data = await apiFetch("/pagos/iniciar", {
         method: "POST",
         body: JSON.stringify({
-          usuarioId: usuario.id,
-          canchaId: modal.canchaId,
-          fecha: toFechaISO(offset),
-          horaInicio: modal.horaInicio + ":00",
-          horaFin: modal.horaFin + ":00",
-          iluminacion: iluminacion && permiteIluminacion(modal.horaInicio),
-          equipamiento
+          reserva: {
+            usuarioId: usuario.id,
+            canchaId: modal.canchaId,
+            fecha: toFechaISO(offset),
+            horaInicio: modal.horaInicio + ":00",
+            horaFin: modal.horaFin + ":00",
+            iluminacion: iluminacion && permiteIluminacion(modal.horaInicio),
+            equipamiento
+          },
+          metodo
         })
       });
-      setBookingStatus("success");
-      setTimeout(() => {
-        closeModal();
-        setRefreshKey(k => k + 1);
-      }, 1500);
+      if (data?.initPoint) {
+        window.location.href = data.initPoint; // → checkout de Mercado Pago
+      } else {
+        setBookingError("No se pudo iniciar el pago.");
+        setBookingStatus("error");
+      }
     } catch (e) {
       setBookingError(e.message);
       setBookingStatus("error");
@@ -542,6 +548,16 @@ function SedeDetalle() {
                       💡 La iluminación está disponible solo para turnos desde las 18:00.
                     </p>
                   )}
+                  {/* Método de pago */}
+                  <div className="modal-metodo">
+                    <p className="modal-metodo__titulo">Método de pago</p>
+                    <select value={metodo} onChange={e => setMetodo(e.target.value)}>
+                      <option value="MERCADO_PAGO">Mercado Pago</option>
+                      <option value="TARJETA_CREDITO">Tarjeta de crédito</option>
+                      <option value="TARJETA_DEBITO">Tarjeta de débito</option>
+                    </select>
+                  </div>
+
                   {bookingStatus === "error" && (
                     <p className="modal-error">{bookingError}</p>
                   )}
@@ -558,7 +574,7 @@ function SedeDetalle() {
                       onClick={handleReservar}
                       disabled={bookingStatus === "loading"}
                     >
-                      {bookingStatus === "loading" ? "Reservando..." : "Confirmar"}
+                      {bookingStatus === "loading" ? "Redirigiendo a pago..." : "Ir a pagar"}
                     </button>
                   </div>
                 </>

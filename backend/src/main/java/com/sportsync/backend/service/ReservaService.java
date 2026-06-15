@@ -79,6 +79,16 @@ public class ReservaService {
 
     @Transactional
     public Reserva crearReserva(CrearReservaRequest req) {
+        return crearReservaConEstado(req, EstadoReserva.ACTIVA, true);
+    }
+
+    /** Crea la reserva en PENDIENTE_PAGO (flujo con pago). No recalcula precios hasta confirmarse. */
+    @Transactional
+    public Reserva crearReservaPendiente(CrearReservaRequest req) {
+        return crearReservaConEstado(req, EstadoReserva.PENDIENTE_PAGO, false);
+    }
+
+    private Reserva crearReservaConEstado(CrearReservaRequest req, EstadoReserva estadoInicial, boolean recalcular) {
         // Validar que la cancha existe y está habilitada
         Cancha cancha = canchaRepo.findById(req.getCanchaId())
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Cancha no encontrada."));
@@ -152,7 +162,7 @@ public class ReservaService {
         reserva.setHoraInicio(req.getHoraInicio());
         reserva.setHoraFin(req.getHoraFin());
         reserva.setIluminacion(req.isIluminacion());
-        reserva.setEstado(EstadoReserva.ACTIVA);
+        reserva.setEstado(estadoInicial);
         reserva.setPrecioBase(cancha.getPrecioBase());
         reserva.setDescuentoAplicado(descuento);
 
@@ -192,15 +202,38 @@ public class ReservaService {
                 reservaEquipRepo.save(re);
             }
         }
-        Long canchaIdTrigger = req.getCanchaId();
+        if (recalcular) {
+            Long canchaIdTrigger = req.getCanchaId();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    precioService.recalcularCancha(canchaIdTrigger);
+                }
+            });
+        }
+
+        return guardada;
+    }
+
+    /** Confirma una reserva pendiente (pago aprobado) y dispara el recálculo de precios. */
+    @Transactional
+    public void confirmarReserva(Reserva reserva) {
+        reserva.setEstado(EstadoReserva.ACTIVA);
+        reservaRepo.save(reserva);
+        Long canchaId = reserva.getCancha().getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                precioService.recalcularCancha(canchaIdTrigger);
+                precioService.recalcularCancha(canchaId);
             }
         });
+    }
 
-        return guardada;
+    /** Cancela una reserva (pago rechazado/vencido/cancelado). */
+    @Transactional
+    public void cancelarPorPago(Reserva reserva) {
+        reserva.setEstado(EstadoReserva.CANCELADA);
+        reservaRepo.save(reserva);
     }
 
     // ── UC-41: Historial de reservas ──────────────────────────────────────────

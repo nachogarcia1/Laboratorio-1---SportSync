@@ -1,0 +1,79 @@
+.pago-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pago-page__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: var(--light-bg, #f3f4f6);
+}
+
+.pago-card {
+  background: #fff;
+  border: 1px solid var(--border-card, #e2e5ea);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+}
+
+.pago-card__loading { color: #6b7280; font-size: 15px; margin: 0; }
+
+.pago-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  font-size: 34px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.pago-card__titulo {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+
+.pago-card__texto {
+  font-size: 14px;
+  color: #5f6773;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.pago-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pago-card__btn {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.pago-card__btn:hover { background: #f9fafb; }
+
+.pago-card__btn--primary {
+  background: var(--blue, #2f66e8);
+  border-color: var(--blue, #2f66e8);
+  color: #fff;
+}
+.pago-card__btn--primary:hover { background: var(--blue-dark, #234fc0); }
