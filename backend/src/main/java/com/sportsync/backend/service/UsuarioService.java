@@ -223,4 +223,11 @@ public class UsuarioService {
         usuario.setEstado(EstadoUsuario.ACTIVO);
         return repo.save(usuario);
     }
+
+    public Usuario actualizarPreferencias(Long id, boolean recibirRecordatorios, boolean recibirPromociones) {
+        Usuario usuario = obtenerPorId(id);
+        usuario.setRecibirRecordatorios(recibirRecordatorios);
+        usuario.setRecibirPromociones(recibirPromociones);
+        return repo.save(usuario);
+    }
 }

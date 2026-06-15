@@ -58,10 +58,19 @@ public class PrecioInteligenteService {
     }
 
     // ── Consulta puntual: descuento activo para una cancha + hora ────────────
-    public double obtenerDescuento(Long canchaId, LocalTime hora) {
+    public double obtenerDescuento(Long canchaId, LocalTime hora, LocalDate fecha) {
+        // El descuento solo aplica si la reserva es de hoy hasta 5 días adelante
+        if (fecha != null && fecha.isAfter(LocalDate.now().plusDays(5))) {
+            return 0.0;
+        }
         return descuentoRepo.findByCanchaIdAndHora(canchaId, hora)
                 .map(DescuentoHorario::getDescuentoActual)
                 .orElse(0.0);
+    }
+
+    // Overload sin fecha (para compatibilidad con llamadas existentes)
+    public double obtenerDescuento(Long canchaId, LocalTime hora) {
+        return obtenerDescuento(canchaId, hora, null);
     }
 
     // ── Genera todos los slots posibles del rango configurado ────────────────

@@ -46,6 +46,12 @@ public class Usuario {
     @Column(nullable = false)
     private boolean verificado = false;
 
+    @Column(nullable = false)
+    private boolean recibirRecordatorios = true;
+
+    @Column(nullable = false)
+    private boolean recibirPromociones = true;
+
     /** Cómo se dio de alta la cuenta (LOCAL = email+código, GOOGLE = OAuth). */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -63,6 +69,8 @@ public class Usuario {
     public EstadoUsuario getEstado() { return estado; }
     public boolean isVerificado()    { return verificado; }
     public AuthProvider getAuthProvider() { return authProvider; }
+    public boolean isRecibirRecordatorios() { return recibirRecordatorios; }
+    public boolean isRecibirPromociones()   { return recibirPromociones; }
     //public boolean isActivo()   { return activo; }
 
     public void setNombre(String nombre)          { this.nombre = nombre; }
@@ -74,5 +82,7 @@ public class Usuario {
     public void setEstado(EstadoUsuario estado)   { this.estado = estado; }
     public void setVerificado(boolean verificado) { this.verificado = verificado; }
     public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
+    public void setRecibirRecordatorios(boolean v) { this.recibirRecordatorios = v; }
+    public void setRecibirPromociones(boolean v)   { this.recibirPromociones = v; }
     //public void setActivo(boolean activo)       { this.activo = activo; }
 }

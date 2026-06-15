@@ -149,7 +149,7 @@ public class ReservaService {
         }
 
         // Calcular precio base
-        double descuento = precioService.obtenerDescuento(req.getCanchaId(), req.getHoraInicio());
+        double descuento = precioService.obtenerDescuento(req.getCanchaId(), req.getHoraInicio(), req.getFecha());
         double precio    = cancha.getPrecioBase() * (1 - descuento);
         if (esSocio) precio *= (1 - DESCUENTO_SOCIO);
         if (req.isIluminacion()) precio += PRECIO_ILUMINACION * (esSocio ? (1 - DESCUENTO_SOCIO) : 1.0);
@@ -275,7 +275,7 @@ public class ReservaService {
         return reservaRepo.save(reserva);
     }
 
-    public Map<String, Object> calcularPrecioPreview(Long canchaId, LocalTime hora, Long usuarioId) {
+    public Map<String, Object> calcularPrecioPreview(Long canchaId, LocalTime hora, Long usuarioId, LocalDate fecha) {
         Cancha cancha = canchaRepo.findById(canchaId)
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Cancha no encontrada."));
 
@@ -285,7 +285,7 @@ public class ReservaService {
             esSocio = u != null && u.getRol() == Rol.SOCIO;
         }
 
-        double descuento                   = precioService.obtenerDescuento(canchaId, hora);
+        double descuento                   = precioService.obtenerDescuento(canchaId, hora, fecha);
         double precioTrasPrecioInteligente = cancha.getPrecioBase() * (1 - descuento);
         double precioFinal                 = esSocio ? precioTrasPrecioInteligente * (1 - DESCUENTO_SOCIO) : precioTrasPrecioInteligente;
 
