@@ -18,4 +18,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     Optional<Pago> findByPreferenciaId(String preferenciaId);
 
     Optional<Pago> findByProveedorId(String proveedorId);
+
+    /** Pagos de varias reservas (batch, para el reporte sin N+1). */
+    @org.springframework.data.jpa.repository.Query("SELECT p FROM Pago p WHERE p.reserva.id IN :reservaIds")
+    java.util.List<Pago> findByReservaIdIn(
+            @org.springframework.data.repository.query.Param("reservaIds") java.util.List<Long> reservaIds);
 }
