@@ -16,6 +16,7 @@ import BuscarCanchas from "./pages/buscar/BuscarCanchas";
 import VerificarEmail from "./pages/verificar/VerificarEmail";
 import PagoResultado from "./pages/pago/PagoResultado";
 import PagoSimular from "./pages/pago/PagoSimular";
+import Chat from "./pages/chat/Chat";
 
 function App() {
   return (
@@ -103,6 +104,12 @@ function App() {
         <Route path="/buscar" element={
           <ProtectedRoute>
             <BuscarCanchas />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/chat" element={
+          <ProtectedRoute>
+            <Chat />
           </ProtectedRoute>
         } />
 
