@@ -402,3 +402,9 @@
   align-items: center;
   justify-content: center;
 }
+
+.modal-precio__socio-badge {
+  font-size: 0.75rem;
+  color: #16a34a;
+  font-weight: 600;
+}

@@ -61,4 +61,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
             @Param("canchaId") Long canchaId,
             @Param("desde") LocalDate desde
     );
+
+    long countByUsuarioIdAndEstado(Long usuarioId, EstadoReserva estado);
 }

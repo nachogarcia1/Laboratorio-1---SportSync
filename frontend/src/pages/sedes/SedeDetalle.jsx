@@ -230,6 +230,11 @@ function SedeDetalle() {
 
   // Total de extras (ítems) seleccionados
   function totalExtras() {
+    const total = extras.reduce((acc, it) => acc + (cantidades[it.id] || 0) * it.precioPorUnidad, 0);
+    return precioModal?.esSocio ? Math.round(total * 0.9) : total;
+  }
+
+  function totalExtrasOriginal() {
     return extras.reduce((acc, it) => acc + (cantidades[it.id] || 0) * it.precioPorUnidad, 0);
   }
 
@@ -245,7 +250,7 @@ function SedeDetalle() {
     setIluminacion(false);
     setLoadingPrecio(true);
     try {
-      const data = await apiFetch(`/reservas/precio-preview?canchaId=${canchaId}&hora=${horaInicio}`);
+      const data = await apiFetch(`/reservas/precio-preview?canchaId=${canchaId}&hora=${horaInicio}&usuarioId=${usuario?.id}`);
       setPrecioModal(data);
     } catch {
     } finally {
@@ -428,19 +433,67 @@ function SedeDetalle() {
 
                     {precioModal && (
                       <div className="modal-precio">
+                        {/* Precio base con descuento inteligente */}
                         {precioModal.descuentoPorcentaje > 0 ? (
                           <>
                             <p>Precio cancha: <span className="precio-tachado">${precioModal.precioBase.toLocaleString("es-AR")}</span></p>
-                            <p className="modal-precio__descuento">Descuento -{precioModal.descuentoPorcentaje}%: -${(precioModal.precioBase - precioModal.precioFinal).toLocaleString("es-AR")}</p>
-                            <p>Subtotal cancha: <strong>${precioModal.precioFinal.toLocaleString("es-AR")}</strong></p>
+                            <p className="modal-precio__descuento">Descuento horario -{precioModal.descuentoPorcentaje}%: -${(precioModal.precioBase - precioModal.precioTrasPrecioInteligente).toLocaleString("es-AR")}</p>
+                            {precioModal.esSocio && <p>Precio intermedio: <strong>${precioModal.precioTrasPrecioInteligente.toLocaleString("es-AR")}</strong></p>}
                           </>
+                        ) : precioModal.esSocio ? (
+                          <p>Precio cancha: <span className="precio-tachado">${precioModal.precioBase.toLocaleString("es-AR")}</span></p>
                         ) : (
                           <p>Precio cancha: <strong>${precioModal.precioFinal.toLocaleString("es-AR")}</strong></p>
                         )}
-                        {totalExtras() > 0 && <p className="modal-precio__extra">Extras: +${totalExtras().toLocaleString("es-AR")}</p>}
-                        {iluminacion && permiteIluminacion(modal.horaInicio) && <p className="modal-precio__extra">Iluminación: +$500</p>}
+
+                        {/* Descuento socio */}
+                        {precioModal.esSocio && (
+                          <p className="modal-precio__descuento">🎟️ Descuento socio -10%: -${(precioModal.precioTrasPrecioInteligente - precioModal.precioFinal).toLocaleString("es-AR")}</p>
+                        )}
+
+                        {/* Subtotal cancha */}
+                        {(precioModal.descuentoPorcentaje > 0 || precioModal.esSocio) && (
+                          <p>Subtotal cancha: <strong>${precioModal.precioFinal.toLocaleString("es-AR")}</strong></p>
+                        )}
+
+                        {/* Extras */}
+                        {totalExtrasOriginal() > 0 && (
+                          <p className="modal-precio__extra">
+                            Extras:{" "}
+                            {precioModal.esSocio ? (
+                              <>
+                                <span className="precio-tachado">${totalExtrasOriginal().toLocaleString("es-AR")}</span>
+                                {" → "}<strong>${totalExtras().toLocaleString("es-AR")}</strong>
+                                <span className="modal-precio__socio-badge"> (−10% socio)</span>
+                              </>
+                            ) : (
+                              <strong>+${totalExtras().toLocaleString("es-AR")}</strong>
+                            )}
+                          </p>
+                        )}
+
+                        {/* Iluminación */}
+                        {iluminacion && permiteIluminacion(modal.horaInicio) && (
+                          <p className="modal-precio__extra">
+                            Iluminación:{" "}
+                            {precioModal.esSocio ? (
+                              <>
+                                <span className="precio-tachado">$500</span>
+                                {" → "}<strong>$450</strong>
+                                <span className="modal-precio__socio-badge"> (−10% socio)</span>
+                              </>
+                            ) : (
+                              <strong>+$500</strong>
+                            )}
+                          </p>
+                        )}
+
                         <p className="modal-precio__total">
-                          Total: <strong>${(precioModal.precioFinal + totalExtras() + (iluminacion && permiteIluminacion(modal.horaInicio) ? 500 : 0)).toLocaleString("es-AR")}</strong>
+                          Total: <strong>${(
+                            precioModal.precioFinal +
+                            totalExtras() +
+                            (iluminacion && permiteIluminacion(modal.horaInicio) ? (precioModal.esSocio ? 450 : 500) : 0)
+                          ).toLocaleString("es-AR")}</strong>
                         </p>
                       </div>
                     )}
@@ -478,7 +531,11 @@ function SedeDetalle() {
                         checked={iluminacion}
                         onChange={e => setIluminacion(e.target.checked)}
                       />
-                      Iluminación (+$500)
+                      {precioModal?.esSocio ? (
+                        <>Iluminación (<span className="precio-tachado">$500</span> → $450 <span className="modal-precio__socio-badge">−10% socio</span>)</>
+                      ) : (
+                        <>Iluminación (+$500)</>
+                      )}
                     </label>
                   ) : (
                     <p className="modal-iluminacion modal-iluminacion--nodisp">
