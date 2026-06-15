@@ -138,9 +138,10 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}/acreditar")
-    public ResponseEntity<?> acreditar(@PathVariable Long id) {
+    public ResponseEntity<?> acreditar(@PathVariable Long id,
+                                       @RequestBody com.sportsync.backend.dto.DatosTarjeta tarjeta) {
         try {
-            Membresia membresia = service.acreditarSocio(id);
+            Membresia membresia = service.acreditarSocio(id, tarjeta);
             Usuario usuario = service.obtenerPorId(id);
             String nuevoToken = jwtUtil.generarToken(usuario.getEmail(), usuario.getRol().name());
             return ResponseEntity.ok(Map.of(

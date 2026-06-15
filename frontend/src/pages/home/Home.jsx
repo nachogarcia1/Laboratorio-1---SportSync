@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../utils/api";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
+import FormularioTarjeta from "../../components/FormularioTarjeta";
 import "./Home.css";
 
 const BENEFICIOS = [
@@ -25,6 +26,7 @@ function Home() {
   const [modalSocio,      setModalSocio]      = useState(false);
   const [modalBeneficios, setModalBeneficios] = useState(false);
   const [errorSocio,      setErrorSocio]      = useState("");
+  const [procesandoSocio, setProcesandoSocio] = useState(false);
 
   // Búsqueda rápida (delega en /buscar)
   const [busqueda,     setBusqueda]     = useState("");
@@ -45,10 +47,14 @@ function Home() {
     return `${d}/${m}/${y}`;
   };
 
-  const handleAcreditar = async () => {
+  const handleAcreditar = async (datosTarjeta) => {
     setErrorSocio("");
+    setProcesandoSocio(true);
     try {
-      const data = await apiFetch(`/usuarios/${usuario.id}/acreditar`, { method: "PUT" });
+      const data = await apiFetch(`/usuarios/${usuario.id}/acreditar`, {
+        method: "PUT",
+        body: JSON.stringify(datosTarjeta)
+      });
       const usuarioActualizado = {
         ...usuario,
         rol: "SOCIO",
@@ -61,6 +67,8 @@ function Home() {
       setModalSocio(false);
     } catch (err) {
       setErrorSocio(err.message);
+    } finally {
+      setProcesandoSocio(false);
     }
   };
 
@@ -155,8 +163,8 @@ function Home() {
               <button className="modal-close" onClick={() => setModalSocio(false)}>✕</button>
             </div>
             <div className="modal-form">
-              <p style={{ marginBottom: "1rem" }}>
-                Al confirmar, tu cuenta se acreditará como socio y tendrás acceso inmediato a todos los beneficios por <strong>12 meses</strong>.
+              <p style={{ marginBottom: "0.75rem" }}>
+                La membresía se acredita por <strong>12 meses</strong> tras abonar la cuota con tarjeta. Solo te hacés socio si el pago es aprobado.
               </p>
               <button
                 className="modal-form__link-beneficios"
@@ -164,11 +172,12 @@ function Home() {
               >
                 ℹ Ver todos los beneficios
               </button>
-              {errorSocio && <p className="form__error">{errorSocio}</p>}
-              <div className="modal-actions">
-                <button className="modal-btn-cancel" onClick={() => setModalSocio(false)}>Cancelar</button>
-                <button className="modal-btn-save" onClick={handleAcreditar}>Confirmar</button>
-              </div>
+              <FormularioTarjeta
+                onPagar={handleAcreditar}
+                procesando={procesandoSocio}
+                error={errorSocio}
+                botonTexto="Pagar y asociarme"
+              />
             </div>
           </div>
         </div>
