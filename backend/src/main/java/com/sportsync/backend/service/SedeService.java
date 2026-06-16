@@ -57,6 +57,8 @@ public class SedeService {
             sede.setDireccion(nuevaDireccion);
             // Forzar re-geocodificación si cambia la dirección
             sede.setUbicacion(null);
+            sede.setLatitud(null);
+            sede.setLongitud(null);
         }
         if (nuevaHoraApertura != null && !nuevaHoraApertura.isBlank()) {
             sede.setHoraApertura(nuevaHoraApertura);
@@ -101,7 +103,8 @@ public class SedeService {
             }
             GeocodingResult result = geocodingService.geocodificar(sede.getDireccion());
             if (result != null) {
-                sede.setUbicacion(result.ubicacion());
+                sede.setLatitud(result.ubicacion().getY());
+                sede.setLongitud(result.ubicacion().getX());
                 sede.setDireccion(result.direccionCanonica());
                 repo.save(sede);
                 exitosas++;
@@ -120,7 +123,8 @@ public class SedeService {
         if (sede.getUbicacion() == null && sede.getDireccion() != null) {
             GeocodingResult result = geocodingService.geocodificar(sede.getDireccion());
             if (result != null) {
-                sede.setUbicacion(result.ubicacion());
+                sede.setLatitud(result.ubicacion().getY());
+                sede.setLongitud(result.ubicacion().getX());
                 // Normalizar la dirección con el nombre canónico de Nominatim
                 // para garantizar consistencia entre la dirección guardada y las coordenadas
                 sede.setDireccion(result.direccionCanonica());

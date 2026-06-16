@@ -76,7 +76,8 @@ public class CanchaService {
 
     // ── Editar ────────────────────────────────────────────────────────────────
 
-    public Cancha editar(Long id, String nuevoNombre, Integer nuevoTipo, Double nuevoPrecio) {
+    public Cancha editar(Long id, String nuevoNombre, Integer nuevoTipo, Double nuevoPrecio,
+                         String horaApertura, String horaCierre, Integer duracionTurnoMin, String diasSemana) {
         Cancha cancha = obtenerPorId(id);
 
         if (nuevoNombre != null && !nuevoNombre.isBlank()) {
@@ -89,6 +90,10 @@ public class CanchaService {
         if (nuevoPrecio != null && nuevoPrecio > 0) {
             cancha.setPrecioBase(nuevoPrecio);
         }
+        if (horaApertura != null && !horaApertura.isBlank()) cancha.setHoraApertura(horaApertura);
+        if (horaCierre != null && !horaCierre.isBlank())     cancha.setHoraCierre(horaCierre);
+        if (duracionTurnoMin != null && duracionTurnoMin > 0) cancha.setDuracionTurnoMin(duracionTurnoMin);
+        if (diasSemana != null && !diasSemana.isBlank())     cancha.setDiasSemana(diasSemana);
 
         return repo.save(cancha);
     }

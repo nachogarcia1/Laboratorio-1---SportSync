@@ -203,19 +203,19 @@ export default function BuscarCanchas() {
               />
               <RecenterMap center={mapCenter} />
 
-              {/* Marcador del usuario */}
+              {/* Marcador del usuario (azul, para distinguirlo de las sedes) */}
               {userPos && (
-                <Marker position={[userPos.lat, userPos.lng]} icon={iconoUsuario}>
+                <Marker position={[userPos.lat, userPos.lng]} icon={iconoCercano}>
                   <Popup>Tu ubicación</Popup>
                 </Marker>
               )}
 
-              {/* Marcadores de todas las sedes con coordenadas */}
+              {/* Todas las sedes como marcador ROJO */}
               {sedes.map(sede => (
                 <Marker
                   key={sede.id}
                   position={[sede.latitud, sede.longitud]}
-                  icon={idsCercanas.has(sede.id) ? iconoCercano : iconoNormal}
+                  icon={iconoUsuario}
                 >
                   <Popup>
                     <strong>{sede.nombre}</strong><br />
