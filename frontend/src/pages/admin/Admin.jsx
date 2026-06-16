@@ -61,7 +61,7 @@ function Admin() {
   const [geocodBatchMsg,   setGeocodBatchMsg]    = useState("");
   const [sugerencias,      setSugerencias]       = useState([]);
   const geocodDirTimer = useRef(null);
-  const [formCancha,       setFormCancha]        = useState({ sedeId: "", nombre: "", tipo: "5", precioBase: "", error: "" });
+  const [formCancha,       setFormCancha]        = useState({ sedeId: "", nombre: "", tipo: "5", precioBase: "", horaApertura: "08:00", horaCierre: "22:00", duracionTurnoMin: "60", diasSemana: "1,2,3,4,5,6,7", error: "" });
   const [sedesDisponibles, setSedesDisponibles]  = useState([]);
   const [sedes,            setSedes]             = useState([]);
   const [canchas,          setCanchas]           = useState([]);
@@ -237,13 +237,17 @@ function Admin() {
       await apiFetch(`/canchas/sede/${formCancha.sedeId}`, {
         method: "POST",
         body: JSON.stringify({
-          nombre:     formCancha.nombre,
-          tipo:       parseInt(formCancha.tipo),
-          precioBase: parseFloat(formCancha.precioBase)
+          nombre:           formCancha.nombre,
+          tipo:             parseInt(formCancha.tipo),
+          precioBase:       parseFloat(formCancha.precioBase),
+          horaApertura:     formCancha.horaApertura,
+          horaCierre:       formCancha.horaCierre,
+          duracionTurnoMin: parseInt(formCancha.duracionTurnoMin),
+          diasSemana:       formCancha.diasSemana
         })
       });
       setModalCancha(false);
-      setFormCancha({ sedeId: "", nombre: "", tipo: "5", precioBase: "", error: "" });
+      setFormCancha({ sedeId: "", nombre: "", tipo: "5", precioBase: "", horaApertura: "08:00", horaCierre: "22:00", duracionTurnoMin: "60", diasSemana: "1,2,3,4,5,6,7", error: "" });
     } catch (err) {
       setFormCancha(f => ({ ...f, error: err.message }));
     }
@@ -1450,6 +1454,52 @@ function Admin() {
               <label>Precio Base</label>
               <input type="number" placeholder="Ej: 1500" value={formCancha.precioBase} required min="0"
                 onChange={e => setFormCancha({ ...formCancha, precioBase: e.target.value })} />
+
+              <label>Horario de esta cancha</label>
+              <div style={{ display: "flex", gap: "0.6rem" }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>Apertura</span>
+                  <input type="time" value={formCancha.horaApertura} required
+                    onChange={e => setFormCancha({ ...formCancha, horaApertura: e.target.value })} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>Cierre</span>
+                  <input type="time" value={formCancha.horaCierre} required
+                    onChange={e => setFormCancha({ ...formCancha, horaCierre: e.target.value })} />
+                </div>
+                <div style={{ width: "110px" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>Turno (min)</span>
+                  <select value={formCancha.duracionTurnoMin}
+                    onChange={e => setFormCancha({ ...formCancha, duracionTurnoMin: e.target.value })}>
+                    <option value="30">30</option>
+                    <option value="60">60</option>
+                    <option value="90">90</option>
+                    <option value="120">120</option>
+                  </select>
+                </div>
+              </div>
+
+              <label>Días disponibles</label>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                {[["1","Lun"],["2","Mar"],["3","Mié"],["4","Jue"],["5","Vie"],["6","Sáb"],["7","Dom"]].map(([n, lbl]) => {
+                  const dias = formCancha.diasSemana.split(",").filter(Boolean);
+                  const activo = dias.includes(n);
+                  return (
+                    <button type="button" key={n}
+                      onClick={() => {
+                        const next = activo ? dias.filter(d => d !== n) : [...dias, n];
+                        next.sort();
+                        setFormCancha({ ...formCancha, diasSemana: next.join(",") });
+                      }}
+                      style={{ padding: "5px 10px", borderRadius: "6px", border: "1px solid #d1d5db",
+                        background: activo ? "#2f66e8" : "#fff", color: activo ? "#fff" : "#374151",
+                        cursor: "pointer", fontSize: "0.8rem", fontWeight: 600 }}>
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
+
               {formCancha.error && <p className="form__error">{formCancha.error}</p>}
               <div className="modal-actions">
                 <button type="button" className="modal-btn-cancel" onClick={() => setModalCancha(false)}>Cancelar</button>

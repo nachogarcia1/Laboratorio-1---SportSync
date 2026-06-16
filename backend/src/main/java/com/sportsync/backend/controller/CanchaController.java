@@ -85,11 +85,16 @@ public class CanchaController {
     public ResponseEntity<?> editar(@PathVariable Long id,
                                     @RequestBody Map<String, Object> body) {
         try {
-            String nombre     = (String) body.get("nombre");
-            Integer tipo      = body.get("tipo") != null ? ((Number) body.get("tipo")).intValue() : null;
-            Double precioBase = body.get("precioBase") != null ? ((Number) body.get("precioBase")).doubleValue() : null;
+            String nombre       = (String) body.get("nombre");
+            Integer tipo        = body.get("tipo") != null ? ((Number) body.get("tipo")).intValue() : null;
+            Double precioBase   = body.get("precioBase") != null ? ((Number) body.get("precioBase")).doubleValue() : null;
+            String horaApertura = (String) body.get("horaApertura");
+            String horaCierre   = (String) body.get("horaCierre");
+            Integer duracion    = body.get("duracionTurnoMin") != null ? ((Number) body.get("duracionTurnoMin")).intValue() : null;
+            String diasSemana   = (String) body.get("diasSemana");
 
-            return ResponseEntity.ok(service.editar(id, nombre, tipo, precioBase));
+            return ResponseEntity.ok(service.editar(id, nombre, tipo, precioBase,
+                    horaApertura, horaCierre, duracion, diasSemana));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
