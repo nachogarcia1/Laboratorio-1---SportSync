@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 
 public interface ReservaRepository extends JpaRepository<Reserva, Long> {
 
@@ -76,4 +77,9 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     );
 
     long countByUsuarioIdAndEstado(Long usuarioId, EstadoReserva estado);
+
+    List<Reserva> findByFechaAndEstado(LocalDate fecha, EstadoReserva estado);
+
+    @Query("SELECT DISTINCT r.cancha.sede.id FROM Reserva r WHERE r.usuario.id = :usuarioId AND r.estado <> com.sportsync.backend.model.admin.EstadoReserva.CANCELADA")
+    Set<Long> findSedesConHistorialDeUsuario(@Param("usuarioId") Long usuarioId);
 }

@@ -3,6 +3,7 @@ import { apiFetch } from "../../utils/api";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
 import "./Perfil.css";
+import FormularioTarjeta from "../../components/FormularioTarjeta";
 
 function Perfil() {
   const [usuario, setUsuario] = useState(() => {
@@ -32,6 +33,9 @@ function Perfil() {
   const [comentarioCalificar, setComentarioCalificar] = useState("");
   const [errorCalificar,     setErrorCalificar]     = useState("");
   const [enviando,           setEnviando]           = useState(false);
+  const [procesandoSocio, setProcesandoSocio] = useState(false);
+  const [preferencias,   setPreferencias]   = useState({ recibirRecordatorios: true, recibirPromociones: true });
+  const [guardandoPref,  setGuardandoPref]  = useState(false);
 
   useEffect(() => {
     if (!usuario) return;
@@ -46,6 +50,16 @@ function Perfil() {
         if (califs.status   === "fulfilled") setCalificaciones(califs.value);
       })
       .finally(() => setLoadingStats(false));
+  }, []);
+
+  useEffect(() => {
+    if (!usuario) return;
+    apiFetch(`/usuarios/${usuario.id}`)
+      .then(data => setPreferencias({
+        recibirRecordatorios: data.recibirRecordatorios ?? true,
+        recibirPromociones:   data.recibirPromociones   ?? true
+      }))
+      .catch(() => {});
   }, []);
 
   const criticasMap = new Map(criticasCancha.map(c => [c.reservaId, c]));
@@ -143,10 +157,14 @@ function Perfil() {
     return `${d}/${m}/${y}`;
   };
 
-  const handleAcreditar = async () => {
+  const handleAcreditar = async (datosTarjeta) => {
     setErrorSocio("");
+    setProcesandoSocio(true);
     try {
-      const data = await apiFetch(`/usuarios/${usuario.id}/acreditar`, { method: "PUT" });
+      const data = await apiFetch(`/usuarios/${usuario.id}/acreditar`, {
+        method: "PUT",
+        body: JSON.stringify(datosTarjeta)
+      });
       const usuarioActualizado = {
         ...usuario, rol: "SOCIO",
         fechaInicioSocio: data.fechaInicioSocio,
@@ -158,6 +176,8 @@ function Perfil() {
       setModalSocio(false);
     } catch (err) {
       setErrorSocio(err.message);
+    } finally {
+      setProcesandoSocio(false);
     }
   };
 
@@ -174,6 +194,23 @@ function Perfil() {
       setModalConfirmarCancelar(false);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handlePreferencia = async (campo, valor) => {
+    const anteriores = preferencias;
+    const nuevas = { ...preferencias, [campo]: valor };
+    setPreferencias(nuevas);
+    setGuardandoPref(true);
+    try {
+      await apiFetch(`/usuarios/${usuario.id}/preferencias`, {
+        method: "PUT",
+        body: JSON.stringify(nuevas)
+      });
+    } catch {
+      setPreferencias(anteriores);
+    } finally {
+      setGuardandoPref(false);
     }
   };
 
@@ -284,6 +321,31 @@ function Perfil() {
                 })}
               </div>
             </section>
+
+            <section className="perfil-notificaciones">
+              <h3 className="perfil-section-title">Notificaciones</h3>
+              <div className="perfil-notificaciones__lista">
+                {[
+                  { campo: "recibirPromociones",   label: "🏷️ Emails de promociones",     desc: "Descuentos activos en sedes donde ya reservaste." }
+                ].map(({ campo, label, desc }) => (
+                  <div key={campo} className="perfil-notif-item">
+                    <div>
+                      <p className="perfil-notif-item__label">{label}</p>
+                      <p className="perfil-notif-item__desc">{desc}</p>
+                    </div>
+                    <label className="perfil-toggle">
+                      <input
+                        type="checkbox"
+                        checked={preferencias[campo]}
+                        disabled={guardandoPref}
+                        onChange={e => handlePreferencia(campo, e.target.checked)}
+                      />
+                      <span className="perfil-toggle__slider" />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </div>
       </main>
@@ -356,24 +418,26 @@ function Perfil() {
 
       {/* Modal Hacerme Socio */}
       {modalSocio && (
-        <div className="modal-overlay" onClick={() => setModalSocio(false)}>
+        <div className="modal-overlay" onClick={() => !procesandoSocio && setModalSocio(false)}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Hacerme Socio</h2>
               <button className="modal-close" onClick={() => setModalSocio(false)}>✕</button>
             </div>
             <div className="modal-form">
-              <p style={{ marginBottom: "1rem" }}>
-                Al confirmar, tu cuenta se acreditará como socio y tendrás acceso inmediato a todos los beneficios por <strong>12 meses</strong>.
+              <p style={{ marginBottom: "0.5rem" }}>
+                Membresía por <strong>12 meses</strong>. Ingresá los datos de tu tarjeta para abonar la cuota.
               </p>
               <button className="modal-form__link-beneficios" onClick={() => { setModalSocio(false); setModalBeneficios(true); }}>
                 ℹ Ver todos los beneficios
               </button>
-              {errorSocio && <p className="form__error">{errorSocio}</p>}
-              <div className="modal-actions">
-                <button className="modal-btn-cancel" onClick={() => setModalSocio(false)}>Cancelar</button>
-                <button className="modal-btn-save" onClick={handleAcreditar}>Confirmar</button>
-              </div>
+              <FormularioTarjeta
+                onPagar={handleAcreditar}
+                procesando={procesandoSocio}
+                error={errorSocio}
+                botonTexto="Confirmar membresía"
+                montoTexto="($5.000)"
+              />
             </div>
           </div>
         </div>

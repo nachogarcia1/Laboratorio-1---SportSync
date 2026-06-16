@@ -156,6 +156,22 @@ public class UsuarioController {
         }
     }
 
+    @PutMapping("/{id}/preferencias")
+    public ResponseEntity<?> actualizarPreferencias(@PathVariable Long id,
+                                                    @RequestBody Map<String, Boolean> body) {
+        try {
+            boolean recordatorios = Boolean.TRUE.equals(body.get("recibirRecordatorios"));
+            boolean promociones   = Boolean.TRUE.equals(body.get("recibirPromociones"));
+            service.actualizarPreferencias(id, recordatorios, promociones);
+            return ResponseEntity.ok(Map.of(
+                    "recibirRecordatorios", recordatorios,
+                    "recibirPromociones",   promociones
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping
     public List<Usuario> listar() {
         return service.listar();

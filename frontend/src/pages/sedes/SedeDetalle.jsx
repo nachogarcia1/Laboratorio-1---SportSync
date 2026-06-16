@@ -162,7 +162,6 @@ function SedeDetalle() {
 
   function getSlotsDisponibles(canchasGrupo) {
     const slots = [];
-    // Solo el día de hoy (offset 0) tiene turnos vencidos; los días futuros, no.
     const esHoy = offset === 0;
     const limiteMin = esHoy ? minutosAhoraEnSede() + antelacionMin : -1;
 
@@ -177,15 +176,18 @@ function SedeDetalle() {
         });
       });
       if (canchaLibre) {
-        // Deshabilitado si el turno arranca antes de "ahora + antelación" (en tz de la sede).
         const vencido = esHoy && (h * 60) < limiteMin;
-        slots.push({ ini, fin, canchaId: canchaLibre.id, vencido });
+        slots.push({ ini, fin, canchaId: canchaLibre.id, vencido, reservado: false });
+      } else {
+        // Todas las canchas ocupadas → queda visible pero no reservable
+        slots.push({ ini, fin, canchaId: canchasGrupo[0].id, vencido: false, reservado: true });
       }
     }
     return slots;
   }
 
   function getDescuentoSlot(canchaId, hora) {
+    if (offset > 5) return 0;
     return descuentosMap[canchaId]?.[hora] || 0;
   }
 
@@ -251,7 +253,7 @@ function SedeDetalle() {
     setIluminacion(false);
     setLoadingPrecio(true);
     try {
-      const data = await apiFetch(`/reservas/precio-preview?canchaId=${canchaId}&hora=${horaInicio}&usuarioId=${usuario?.id}`);
+      const data = await apiFetch(`/reservas/precio-preview?canchaId=${canchaId}&hora=${horaInicio}&usuarioId=${usuario?.id}&fecha=${toFechaISO(offset)}`);
       setPrecioModal(data);
     } catch {
     } finally {
@@ -371,24 +373,32 @@ function SedeDetalle() {
                             <p className="cancha-turnos-placeholder">No hay turnos disponibles para este día.</p>
                           ) : (
                             <div className="cancha-card__turnos">
-                              {slots.map(({ ini, fin, canchaId, vencido }) => {
+                              {slots.map(({ ini, fin, canchaId, vencido, reservado }) => {
                                 const descuento = getDescuentoSlot(canchaId, ini);
+                                const noDisponible = vencido || reservado;
                                 return (
-                                  <div key={ini} className={`turno-row${vencido ? " turno-row--vencido" : ""}`}>
-                                    <span className="turno-hora">{ini}</span>
-                                    {vencido ? (
-                                      <span className="turno-badge turno-badge--vencido">Horario no disponible</span>
-                                    ) : descuento > 0 ? (
-                                      <span className="turno-badge turno-badge--descuento">🏷️ -{descuento}% dto.</span>
+                                  <div key={ini} className={`turno-row${noDisponible ? " turno-row--vencido" : ""}`}>
+                                    <div className="turno-rango">
+                                      <span className="turno-hora">{ini}</span>
+                                      <span className="turno-sep">→</span>
+                                      <span className="turno-hora-fin">{fin}</span>
+                                    </div>
+                                    {noDisponible ? (
+                                      <span className="turno-badge turno-badge--vencido">No disponible</span>
                                     ) : (
-                                      <span className="turno-badge turno-badge--normal">{fin}</span>
+                                      <span className="turno-badge turno-badge--normal">
+                                        <span className="turno-badge__disponible">Disponible</span>
+                                        {descuento > 0 && (
+                                          <span className="turno-badge__descuento">🏷️ -{descuento}% dto.</span>
+                                        )}
+                                      </span>
                                     )}
                                     <button
                                       className="turno-reservar-btn"
-                                      disabled={vencido}
-                                      onClick={() => !vencido && handleAbrirModal(canchaId, tipoNum, ini, fin)}
+                                      disabled={noDisponible}
+                                      onClick={() => !noDisponible && handleAbrirModal(canchaId, tipoNum, ini, fin)}
                                     >
-                                      {vencido ? "No disponible" : "Reservar"}
+                                      Reservar
                                     </button>
                                   </div>
                                 );
