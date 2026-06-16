@@ -26,10 +26,6 @@ function SedeDetalle() {
   const navigate = useNavigate();
 
   const [sede,    setSede]    = useState(null);
-
-  const HORA_APERTURA = parseInt(sede?.horaApertura) || 8;
-  const HORA_CIERRE   = parseInt(sede?.horaCierre) || 22;
-
   const [canchas, setCanchas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
@@ -71,7 +67,7 @@ function SedeDetalle() {
       .then(([sedeData, canchasData]) => {
         setSede(sedeData);
         setCanchas(canchasData);
-        setExpandidos(new Set([...new Set(canchasData.map(c => c.tipo))]));
+        setExpandidos(new Set(canchasData.map(c => c.id)));
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
@@ -104,33 +100,17 @@ function SedeDetalle() {
   useEffect(() => {
     if (canchas.length === 0) return;
     const fechaStr = toFechaISO(offset);
-    const tipos = [...new Set(canchas.map(c => c.tipo))];
 
-    tipos.forEach(tipo => {
-      const canchasGrupo = canchas.filter(c => c.tipo === tipo);
-      setLoadingGrupos(prev => new Set([...prev, tipo]));
-
-      Promise.all(
-        canchasGrupo.map(c =>
-          apiFetch(`/reservas/disponibilidad?canchaId=${c.id}&fecha=${fechaStr}`)
-            .then(data => ({ canchaId: c.id, ocupados: data }))
-            .catch(() => ({ canchaId: c.id, ocupados: [] }))
-        )
-      )
-        .then(results => {
-          setDisponibilidadMap(prev => {
-            const next = { ...prev };
-            results.forEach(({ canchaId, ocupados }) => { next[canchaId] = ocupados; });
-            return next;
-          });
-        })
-        .finally(() => {
-          setLoadingGrupos(prev => {
-            const next = new Set(prev);
-            next.delete(tipo);
-            return next;
-          });
-        });
+    canchas.forEach(c => {
+      setLoadingGrupos(prev => new Set([...prev, c.id]));
+      apiFetch(`/reservas/disponibilidad?canchaId=${c.id}&fecha=${fechaStr}`)
+        .then(data => setDisponibilidadMap(prev => ({ ...prev, [c.id]: data })))
+        .catch(() => setDisponibilidadMap(prev => ({ ...prev, [c.id]: [] })))
+        .finally(() => setLoadingGrupos(prev => {
+          const next = new Set(prev);
+          next.delete(c.id);
+          return next;
+        }));
     });
   }, [canchas, offset, refreshKey]);
 
@@ -160,28 +140,38 @@ function SedeDetalle() {
     return ahoraSede.getHours() * 60 + ahoraSede.getMinutes();
   }
 
-  function getSlotsDisponibles(canchasGrupo) {
-    const slots = [];
+  function diasSemanaActiva(cancha) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const jsDay = d.getDay();
+    const isoDay = jsDay === 0 ? 7 : jsDay; // ISO: 1=Lun … 7=Dom
+    const dias = cancha.diasSemana
+      ? cancha.diasSemana.split(",").map(Number)
+      : [1, 2, 3, 4, 5, 6, 7];
+    return dias.includes(isoDay);
+  }
+
+  function getSlotsCancha(cancha) {
     const esHoy = offset === 0;
     const limiteMin = esHoy ? minutosAhoraEnSede() + antelacionMin : -1;
 
-    for (let h = HORA_APERTURA; h < HORA_CIERRE; h++) {
-      const ini = horaStr(h);
-      const fin = horaStr(h + 1);
-      const canchaLibre = canchasGrupo.find(c => {
-        const ocupados = disponibilidadMap[c.id] || [];
-        return !ocupados.some(r => {
-          const rIni = r.horaInicio ? r.horaInicio.substring(0, 5) : "";
-          return rIni === ini;
-        });
-      });
-      if (canchaLibre) {
-        const vencido = esHoy && (h * 60) < limiteMin;
-        slots.push({ ini, fin, canchaId: canchaLibre.id, vencido, reservado: false });
-      } else {
-        // Todas las canchas ocupadas → queda visible pero no reservable
-        slots.push({ ini, fin, canchaId: canchasGrupo[0].id, vencido: false, reservado: true });
-      }
+    const [ah, am] = (cancha.horaApertura || "08:00").split(":").map(Number);
+    const [ch, cm] = (cancha.horaCierre   || "22:00").split(":").map(Number);
+    const apertura = ah * 60 + am;
+    const cierre   = ch * 60 + cm;
+    const duracion = cancha.duracionTurnoMin || 60;
+
+    const slots = [];
+    for (let min = apertura; min < cierre; min += duracion) {
+      const ini = `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+      const finMin = min + duracion;
+      const fin = `${String(Math.floor(finMin / 60)).padStart(2, "0")}:${String(finMin % 60).padStart(2, "0")}`;
+
+      const ocupados = disponibilidadMap[cancha.id] || [];
+      const reservado = ocupados.some(r => (r.horaInicio || "").substring(0, 5) === ini);
+      const vencido = esHoy && min < limiteMin;
+
+      slots.push({ ini, fin, canchaId: cancha.id, vencido, reservado });
     }
     return slots;
   }
@@ -191,28 +181,11 @@ function SedeDetalle() {
     return descuentosMap[canchaId]?.[hora] || 0;
   }
 
-  function getGrupoRating(canchasGrupo) {
-    const ratings = canchasGrupo
-      .map(c => ratingsMap[c.id])
-      .filter(r => r != null && r > 0);
-    if (ratings.length === 0) return null;
-    return (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1);
-  }
-
-  const gruposMap = canchas.reduce((acc, cancha) => {
-    if (!acc[cancha.tipo]) acc[cancha.tipo] = [];
-    acc[cancha.tipo].push(cancha);
-    return acc;
-  }, {});
-
-  const grupos = Object.entries(gruposMap)
-    .sort(([a], [b]) => Number(a) - Number(b))
-    .filter(([tipo]) => !filtro || Number(tipo) === filtro);
-
-  const toggleExpandido = (tipo) => {
+  
+  const toggleExpandido = (canchaId) => {
     setExpandidos(prev => {
       const next = new Set(prev);
-      next.has(tipo) ? next.delete(tipo) : next.add(tipo);
+      next.has(canchaId) ? next.delete(canchaId) : next.add(canchaId);
       return next;
     });
   };
@@ -246,8 +219,8 @@ function SedeDetalle() {
     setCantidades(prev => ({ ...prev, [itemId]: c }));
   }
 
-  async function handleAbrirModal(canchaId, tipo, horaInicio, horaFin) {
-    setModal({ canchaId, tipo, horaInicio, horaFin });
+  async function handleAbrirModal(canchaId, nombre, horaInicio, horaFin) {
+    setModal({ canchaId, nombre, horaInicio, horaFin });
     setPrecioModal(null);
     setCantidades({});
     setIluminacion(false);
@@ -343,87 +316,87 @@ function SedeDetalle() {
               </div>
             </div>
 
-            {grupos.length === 0 && (
+            {canchas.filter(c => !filtro || c.tipo === filtro).length === 0 && (
               <p className="sede-estado">No hay canchas disponibles.</p>
             )}
 
             <div className="canchas-list">
-              {grupos.map(([tipo, canchasGrupo]) => {
-                const tipoNum   = Number(tipo);
-                const isLoading = loadingGrupos.has(tipoNum);
-                const slots     = getSlotsDisponibles(canchasGrupo);
-                const rating    = getGrupoRating(canchasGrupo);
+              {canchas
+                .filter(c => !filtro || c.tipo === filtro)
+                .map(cancha => {
+                  const isLoading = loadingGrupos.has(cancha.id);
+                  const cerrada   = !diasSemanaActiva(cancha);
+                  const slots     = cerrada ? [] : getSlotsCancha(cancha);
+                  const rating    = ratingsMap[cancha.id];
 
-                return (
-                  <div key={tipo} className="cancha-card">
-                    {expandidos.has(tipoNum) && (
-                      <div className="cancha-card__body">
-                        <div className="cancha-card__image"></div>
-                        <div className="cancha-card__info">
-                          <div className="cancha-card__title-row">
-                            <h3 className="cancha-card__nombre">Fútbol {tipo}</h3>
-                            {rating && (
-                              <span className="cancha-card__rating">⭐ {rating}</span>
+                  return (
+                    <div key={cancha.id} className="cancha-card">
+                      {expandidos.has(cancha.id) && (
+                        <div className="cancha-card__body">
+                          <div className="cancha-card__image"></div>
+                          <div className="cancha-card__info">
+                            <div className="cancha-card__title-row">
+                              <h3 className="cancha-card__nombre">{cancha.nombre}</h3>
+                              {rating && <span className="cancha-card__rating">⭐ {rating}</span>}
+                            </div>
+
+                            {cerrada ? (
+                              <p className="cancha-turnos-placeholder">Esta cancha no está disponible este día.</p>
+                            ) : isLoading ? (
+                              <p className="cancha-turnos-placeholder">Cargando turnos...</p>
+                            ) : (
+                              <div className="cancha-card__turnos">
+                                {slots.map(({ ini, fin, canchaId, vencido, reservado }) => {
+                                  const descuento    = getDescuentoSlot(canchaId, ini);
+                                  const noDisponible = vencido || reservado;
+                                  return (
+                                    <div key={ini} className={`turno-row${noDisponible ? " turno-row--vencido" : ""}`}>
+                                      <div className="turno-rango">
+                                        <span className="turno-hora">{ini}</span>
+                                        <span className="turno-sep">→</span>
+                                        <span className="turno-hora-fin">{fin}</span>
+                                      </div>
+                                      {noDisponible ? (
+                                        <span className="turno-badge turno-badge--vencido">No disponible</span>
+                                      ) : (
+                                        <span className="turno-badge turno-badge--normal">
+                                          <span className="turno-badge__disponible">Disponible</span>
+                                          {descuento > 0 && (
+                                            <span className="turno-badge__descuento">🏷️ -{descuento}% dto.</span>
+                                          )}
+                                        </span>
+                                      )}
+                                      <button
+                                        className="turno-reservar-btn"
+                                        disabled={noDisponible}
+                                        onClick={() => !noDisponible && handleAbrirModal(canchaId, cancha.nombre, ini, fin)}
+                                      >
+                                        Reservar
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
-
-                          {isLoading ? (
-                            <p className="cancha-turnos-placeholder">Cargando turnos...</p>
-                          ) : slots.length === 0 ? (
-                            <p className="cancha-turnos-placeholder">No hay turnos disponibles para este día.</p>
-                          ) : (
-                            <div className="cancha-card__turnos">
-                              {slots.map(({ ini, fin, canchaId, vencido, reservado }) => {
-                                const descuento = getDescuentoSlot(canchaId, ini);
-                                const noDisponible = vencido || reservado;
-                                return (
-                                  <div key={ini} className={`turno-row${noDisponible ? " turno-row--vencido" : ""}`}>
-                                    <div className="turno-rango">
-                                      <span className="turno-hora">{ini}</span>
-                                      <span className="turno-sep">→</span>
-                                      <span className="turno-hora-fin">{fin}</span>
-                                    </div>
-                                    {noDisponible ? (
-                                      <span className="turno-badge turno-badge--vencido">No disponible</span>
-                                    ) : (
-                                      <span className="turno-badge turno-badge--normal">
-                                        <span className="turno-badge__disponible">Disponible</span>
-                                        {descuento > 0 && (
-                                          <span className="turno-badge__descuento">🏷️ -{descuento}% dto.</span>
-                                        )}
-                                      </span>
-                                    )}
-                                    <button
-                                      className="turno-reservar-btn"
-                                      disabled={noDisponible}
-                                      onClick={() => !noDisponible && handleAbrirModal(canchaId, tipoNum, ini, fin)}
-                                    >
-                                      Reservar
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
+                      )}
+                      <div
+                        className="cancha-card__footer"
+                        onClick={() => toggleExpandido(cancha.id)}
+                      >
+                        <div className="cancha-card__footer-left">
+                          <span>Fútbol {cancha.tipo}</span>
+                          <span>💲 ${cancha.precioBase.toLocaleString("es-AR")}</span>
+                        </div>
+                        <span className="cancha-card__footer-tipo">{cancha.nombre}</span>
+                        <span className="cancha-card__chevron">
+                          {expandidos.has(cancha.id) ? "▲" : "▼"}
+                        </span>
                       </div>
-                    )}
-                    <div
-                      className="cancha-card__footer"
-                      onClick={() => toggleExpandido(tipoNum)}
-                    >
-                      <div className="cancha-card__footer-left">
-                        <span>x{canchasGrupo.length} {canchasGrupo.length === 1 ? "Cancha" : "Canchas"}</span>
-                        <span>💲 Desde ${canchasGrupo[0].precioBase.toLocaleString("es-AR")}</span>
-                      </div>
-                      <span className="cancha-card__footer-tipo">Fútbol {tipo}</span>
-                      <span className="cancha-card__chevron">
-                        {expandidos.has(tipoNum) ? "▲" : "▼"}
-                      </span>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </>
         )}
@@ -441,7 +414,7 @@ function SedeDetalle() {
                 <>
                   <h2 className="modal-title">Confirmar Reserva</h2>
                   <div className="modal-info">
-                    <p><strong>Cancha:</strong> Fútbol {modal.tipo} — {sede?.nombre}</p>
+                    <p><strong>Cancha:</strong> {modal.nombre} — {sede?.nombre}</p>
                     <p><strong>Fecha:</strong> {fechaFormateada}</p>
                     <p><strong>Horario:</strong> {modal.horaInicio} - {modal.horaFin} hs</p>
 
