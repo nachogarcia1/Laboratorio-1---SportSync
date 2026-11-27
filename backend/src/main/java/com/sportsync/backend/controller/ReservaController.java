@@ -1,6 +1,5 @@
 package com.sportsync.backend.controller;
 
-import com.sportsync.backend.dto.CrearReservaRequest;
 import com.sportsync.backend.model.reserva.Reserva;
 import com.sportsync.backend.service.ReservaService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -38,21 +37,6 @@ public class ReservaController {
     public ResponseEntity<?> config() {
         return ResponseEntity.ok(Map.of(
                 "antelacionMinimaMinutos", service.getAntelacionMinimaMinutos()));
-    }
-
-    // ── UC-40: Crear reserva ──────────────────────────────────────────────────
-    // POST /reservas
-    // Body: CrearReservaRequest
-
-    @PostMapping
-    public ResponseEntity<?> crear(@RequestBody CrearReservaRequest req) {
-        try {
-            return ResponseEntity.ok(service.crearReserva(req));
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
-        }
     }
 
     // ── UC-41: Historial de reservas del usuario ──────────────────────────────

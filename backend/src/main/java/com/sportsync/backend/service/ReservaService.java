@@ -77,11 +77,6 @@ public class ReservaService {
 
     // ── UC-40: Crear reserva ──────────────────────────────────────────────────
 
-    @Transactional
-    public Reserva crearReserva(CrearReservaRequest req) {
-        return crearReservaConEstado(req, EstadoReserva.ACTIVA, true);
-    }
-
     /** Crea la reserva en PENDIENTE_PAGO (flujo con pago). No recalcula precios hasta confirmarse. */
     @Transactional
     public Reserva crearReservaPendiente(CrearReservaRequest req) {
