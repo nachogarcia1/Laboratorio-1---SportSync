@@ -32,10 +32,25 @@ public class Security {
                         .requestMatchers("/usuarios/login", "/usuarios/register",
                                 "/usuarios/verificar", "/usuarios/reenviar-codigo",
                                 "/usuarios/oauth/google", "/pagos/webhook", "/error").permitAll()
+
+                        /* ADMIN sobre sedes/canchas/equipamiento.
+                         * Spring Security aplica la PRIMERA regla que coincide, así que estas van
+                         * antes de los GET públicos: si no, GET /sedes/admin/** quedaría público. */
+                        .requestMatchers("/sedes/admin/**", "/canchas/admin/**", "/equipamiento/admin/**").hasRole("ADMIN")
                         .requestMatchers(
-                                org.springframework.http.HttpMethod.GET,
-                                "/canchas/buscar"
-                        ).permitAll()
+                                org.springframework.http.HttpMethod.POST,
+                                "/sedes/**", "/canchas/**", "/equipamiento/**"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.PUT,
+                                "/sedes/**", "/canchas/**", "/equipamiento/**"
+                        ).hasRole("ADMIN")
+                        .requestMatchers(
+                                org.springframework.http.HttpMethod.DELETE,
+                                "/sedes/**", "/canchas/**", "/equipamiento/**"
+                        ).hasRole("ADMIN")
+
+                        /* GET públicos */
                         .requestMatchers(
                                 org.springframework.http.HttpMethod.GET,
                                 "/canchas/buscar"
@@ -56,16 +71,7 @@ public class Security {
                                 "/usuarios/*/acreditar", "/usuarios/*/cancelar-socio"
                         ).authenticated()
 
-                        /*ADMIN*/
-                        .requestMatchers("/sedes/admin/**").hasRole("ADMIN")
-                        .requestMatchers(
-                                org.springframework.http.HttpMethod.POST,
-                                "/sedes/**", "/canchas/**", "/equipamiento/**"
-                        ).hasRole("ADMIN")
-                        .requestMatchers(
-                                org.springframework.http.HttpMethod.DELETE,
-                                "/sedes/**", "/canchas/**", "/equipamiento/**"
-                        ).hasRole("ADMIN")
+                        /*ADMIN (usuarios, críticas, reportes, precios, chat)*/
                         .requestMatchers("/usuarios").hasRole("ADMIN")
                         .requestMatchers("/usuarios/buscar").hasRole("ADMIN")
                         .requestMatchers(
