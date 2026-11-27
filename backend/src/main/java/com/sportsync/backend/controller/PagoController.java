@@ -4,6 +4,7 @@ import com.sportsync.backend.dto.IniciarPagoRequest;
 import com.sportsync.backend.model.reserva.Pago;
 import com.sportsync.backend.service.PagoService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,6 +21,7 @@ public class PagoController {
 
     // POST /pagos/iniciar — crea reserva PENDIENTE_PAGO + pago + preferencia de MP
     @PostMapping("/iniciar")
+    @PreAuthorize("@authz.puedeIniciarPago(#req)")
     public ResponseEntity<?> iniciar(@RequestBody IniciarPagoRequest req) {
         try {
             PagoService.IniciarResult r = service.iniciarPago(req.getReserva(), req.getMetodo());
@@ -56,6 +58,7 @@ public class PagoController {
     // El front pasa el payment_id que MP agregó a la back_url; el backend consulta el estado
     // real a MP (no confía en el front) y devuelve el pago actualizado.
     @PostMapping("/confirmar")
+    @PreAuthorize("@authz.esDuenioDeReserva(#reservaId)")
     public ResponseEntity<?> confirmar(@RequestParam(required = false) String paymentId,
                                        @RequestParam Long reservaId) {
         try {
@@ -71,6 +74,7 @@ public class PagoController {
     // POST /pagos/tarjeta?reservaId=X — procesa el pago con tarjeta (pasarela mock).
     // Body: DatosTarjeta. Devuelve el ResultadoPago (aprobado/rechazado/datos inválidos).
     @PostMapping("/tarjeta")
+    @PreAuthorize("@authz.esDuenioDeReserva(#reservaId)")
     public ResponseEntity<?> pagarConTarjeta(@RequestParam Long reservaId,
                                              @RequestBody com.sportsync.backend.dto.DatosTarjeta tarjeta) {
         try {
@@ -83,6 +87,7 @@ public class PagoController {
     // POST /pagos/simular — (solo dev) fija el resultado del pago y aplica la transición de la reserva.
     // ?reservaId=X&resultado=APROBADO|RECHAZADO|PENDIENTE|...
     @PostMapping("/simular")
+    @PreAuthorize("@authz.esDuenioDeReserva(#reservaId)")
     public ResponseEntity<?> simular(@RequestParam Long reservaId,
                                      @RequestParam com.sportsync.backend.model.admin.EstadoPago resultado) {
         try {
@@ -94,6 +99,7 @@ public class PagoController {
 
     // GET /pagos/reserva/{reservaId} — estado del pago (para que el front muestre el resultado)
     @GetMapping("/reserva/{reservaId}")
+    @PreAuthorize("@authz.esDuenioDeReservaOAdmin(#reservaId)")
     public ResponseEntity<?> estado(@PathVariable Long reservaId) {
         try {
             Pago pago = service.obtenerPorReserva(reservaId);
