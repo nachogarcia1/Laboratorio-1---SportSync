@@ -13,6 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.when;
  * docs/ENDPOINTS-Y-ROLES.md.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
 class ReglasPorRolTest {
 

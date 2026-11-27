@@ -4,9 +4,10 @@ services:
     container_name: postgres_app
     restart: always
     environment:
-      POSTGRES_DB: sport_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      # Valores del .env de la raíz (ver .env.example). Sin POSTGRES_PASSWORD, compose no levanta.
+      POSTGRES_DB: ${POSTGRES_DB:-sport_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en el .env de la raíz (copiá .env.example)}
     ports:
       - "5434:5432"
     volumes:
@@ -19,9 +20,15 @@ services:
     depends_on:
       - db
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sport_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-sport_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en el .env de la raíz (copiá .env.example)}
+      # Sin valor = se pasa al contenedor solo si está definida en el .env de la raíz o en el shell
+      # (una variable vacía anularía el secreto de prueba del perfil dev).
+      # JWT_SECRET: obligatorio fuera del perfil dev (mínimo 32 caracteres).
+      JWT_SECRET:
+      # SPRING_PROFILES_ACTIVE=dev solo para desarrollo local. Sin definir = perfil de producción.
+      SPRING_PROFILES_ACTIVE:
     ports:
       - "8080:8080"
 
