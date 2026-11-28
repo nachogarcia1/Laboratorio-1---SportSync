@@ -1,6 +1,7 @@
 package com.sportsync.backend.service;
 
 import com.sportsync.backend.dto.CrearReservaRequest;
+import com.sportsync.backend.exception.TurnoNoDisponibleException;
 import com.sportsync.backend.exception.UsuarioNoEncontradoException;
 import com.sportsync.backend.model.admin.EstadoCancha;
 import com.sportsync.backend.model.admin.EstadoReserva;
@@ -11,12 +12,14 @@ import com.sportsync.backend.model.reserva.Reserva;
 import com.sportsync.backend.model.reserva.ReservaEquipamiento;
 import com.sportsync.backend.repository.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.sportsync.backend.model.entidades.Rol;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -84,6 +87,15 @@ public class ReservaService {
     }
 
     private Reserva crearReservaConEstado(CrearReservaRequest req, EstadoReserva estadoInicial, boolean recalcular) {
+        if (req.getFecha() == null || req.getHoraInicio() == null || req.getHoraFin() == null) {
+            throw new IllegalArgumentException("La fecha y los horarios de inicio y fin son obligatorios.");
+        }
+        // Un turno de duración cero no tiene sentido y, para la restricción anti-solapamiento de la
+        // base, se interpretaría como un turno de 24 horas.
+        if (req.getHoraFin().equals(req.getHoraInicio())) {
+            throw new IllegalArgumentException("La hora de fin debe ser distinta de la de inicio.");
+        }
+
         // Validar que la cancha existe y está habilitada
         Cancha cancha = canchaRepo.findById(req.getCanchaId())
                 .orElseThrow(() -> new UsuarioNoEncontradoException("Cancha no encontrada."));
@@ -111,7 +123,7 @@ public class ReservaService {
                 req.getCanchaId(), req.getFecha(), req.getHoraInicio(), req.getHoraFin());
 
         if (solapado) {
-            throw new IllegalStateException("El horario solicitado ya está reservado.");
+            throw new TurnoNoDisponibleException(MENSAJE_TURNO_NO_DISPONIBLE);
         }
 
         Usuario usuario = usuarioRepo.findById(req.getUsuarioId())
@@ -183,7 +195,17 @@ public class ReservaService {
         }
 
         reserva.setPrecioTotal(precio);
-        Reserva guardada = reservaRepo.save(reserva);
+        Reserva guardada;
+        try {
+            // saveAndFlush: la restricción anti-solapamiento de la base se evalúa al ejecutar el INSERT,
+            // así que hay que forzarlo acá para poder traducir el error en lugar de que explote en el commit.
+            guardada = reservaRepo.saveAndFlush(reserva);
+        } catch (DataIntegrityViolationException e) {
+            if (esViolacionDeSolapamiento(e)) {
+                throw new TurnoNoDisponibleException(MENSAJE_TURNO_NO_DISPONIBLE, e);
+            }
+            throw e;
+        }
 
         // Guardar detalle de equipamiento
         if (req.getEquipamiento() != null) {
@@ -208,6 +230,22 @@ public class ReservaService {
         }
 
         return guardada;
+    }
+
+    static final String MENSAJE_TURNO_NO_DISPONIBLE =
+            "Ese turno ya fue reservado o tiene un pago en curso. Elegí otro horario.";
+
+    /** SQLSTATE 23P01 = exclusion_violation: la restricción reserva_sin_solapamiento rechazó el INSERT. */
+    private static final String SQLSTATE_EXCLUSION_VIOLATION = "23P01";
+
+    private static boolean esViolacionDeSolapamiento(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof SQLException sql && SQLSTATE_EXCLUSION_VIOLATION.equals(sql.getSQLState())) {
+                return true;
+            }
+            if (t.getCause() == t) break;
+        }
+        return false;
     }
 
     /** Confirma una reserva pendiente (pago aprobado) y dispara el recálculo de precios. */

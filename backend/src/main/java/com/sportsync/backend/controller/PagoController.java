@@ -1,6 +1,7 @@
 package com.sportsync.backend.controller;
 
 import com.sportsync.backend.dto.IniciarPagoRequest;
+import com.sportsync.backend.exception.TurnoNoDisponibleException;
 import com.sportsync.backend.model.reserva.Pago;
 import com.sportsync.backend.service.PagoService;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,8 @@ public class PagoController {
                     "initPoint",     r.initPoint(),
                     "preferenciaId", r.preferenciaId()
             ));
+        } catch (TurnoNoDisponibleException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {

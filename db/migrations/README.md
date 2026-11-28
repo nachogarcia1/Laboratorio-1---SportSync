@@ -36,26 +36,45 @@ docker compose up -d db                 # Postgres + PostGIS vacío (requiere PO
 cd backend && ./mvnw spring-boot:run    # primer arranque: schema.sql activa PostGIS y Hibernate crea las tablas
 ```
 
+Hibernate **no puede crear** la restricción anti-solapamiento de reservas, así que en una base nueva
+hay que aplicar además la migración 10 (es la protección contra reservas duplicadas por pedidos simultáneos):
+
+```bash
+docker exec -i postgres_app psql -U postgres -d sport_db -v ON_ERROR_STOP=1 \
+  < db/migrations/2026-11-28_10_reserva_sin_solapamiento.sql
+```
+
+Si te la olvidás, el backend lo avisa al arrancar con un mensaje `FALTA la restricción 'reserva_sin_solapamiento'`
+(nivel ERROR) y sigue funcionando, pero sin esa protección.
+
 Para verificar que quedó completo:
 
 ```bash
 docker exec postgres_app psql -U postgres -d sport_db -tAc \
   "select count(*) from information_schema.tables where table_schema='public'"
 # esperado: 17  (14 tablas de la app + 3 de PostGIS)
+
+docker exec postgres_app psql -U postgres -d sport_db -tAc \
+  "select count(*) from pg_constraint where conname = 'reserva_sin_solapamiento'"
+# esperado: 1
 ```
 
 Las 14 tablas de la app: `cancha`, `codigo_verificacion`, `critica_cancha`, `critica_usuario`,
 `descuento_horario`, `item_equipamiento`, `membresia`, `mensaje_chat`, `pago`, `reserva`,
 `reserva_equipamiento`, `sede`, `suspension`, `usuario`.
 
-Una base creada así **ya tiene el esquema final**: no necesita aplicar las migraciones. Lo único que
-esas migraciones agregan en datos es la 06 (4 extras globales de equipamiento: guantes de arquero,
-pecheras, botines y pelota). Si querés esos extras en una base nueva, aplicá solo la 06 (es idempotente).
+Una base creada así tiene las tablas y columnas finales, así que **no necesita las migraciones 01 a 09**
+(sí la 10, ver arriba). Lo único que esas migraciones agregan en datos es la 06 (4 extras globales de
+equipamiento: guantes de arquero, pecheras, botines y pelota). Si querés esos extras en una base nueva,
+aplicá solo la 06 (es idempotente).
 
 > **Probado el 2026-11-28** con una base descartable: una base vacía, tras el primer arranque del
 > backend, tenía 17 tablas, PostGIS activo y las columnas `latitud`/`longitud`/`ubicacion` en `sede`.
 > Después se aplicaron las 9 migraciones en orden, sin errores, y el backend volvió a arrancar sin
 > errores de esquema.
+>
+> **Migración 10 (2026-11-28):** probada con `MigracionSolapamientoTest` (8 casos, directo contra PostgreSQL) y
+> `ReservaConcurrenciaTest` (8 pedidos HTTP simultáneos por el mismo turno: gana uno y los demás reciben 409).
 
 ### Resetear la base (borra todos los datos)
 
@@ -83,6 +102,7 @@ encendido, Hibernate **no** vuelve a crear las tablas (solo lo hace al arrancar)
 | 07 | `2026-06-14_07_pago.sql` | Crea la tabla `pago` y recrea `reserva_estado_check` incluyendo `PENDIENTE_PAGO` | Borra `pago` (**se pierden los pagos**) y **no** restaura el check anterior |
 | 08 | `2026-06-15_08_cancha_horario.sql` | Agrega horario propio a `cancha` (apertura, cierre, duración de turno, días) y lo completa con el de su sede | Borra las 4 columnas (se pierden los horarios propios) |
 | 09 | `2026-06-15_09_sede_lat_lng.sql` | Agrega `sede.latitud`/`longitud` como columnas simples y carga coordenadas de las sedes con id 6 a 10 | Borra las columnas |
+| 10 | `2026-11-28_10_reserva_sin_solapamiento.sql` | Crea la restricción de exclusión `reserva_sin_solapamiento`: la base impide dos reservas ACTIVA/PENDIENTE_PAGO que se superpongan en la misma cancha. **Obligatoria también en bases nuevas.** Aborta si ya hay reservas solapadas | Elimina la restricción (no pierde datos; el sistema vuelve a permitir reservas duplicadas) |
 
 ### Por qué falta la 02
 
@@ -114,7 +134,7 @@ siguiendo hacia atrás. Revisá antes los avisos de la tabla (hay rollbacks que 
 
 ## Cómo agregar una migración nueva
 
-La próxima es la **10**.
+La próxima es la **11**.
 
 1. **Nombre:** `AAAA-MM-DD_NN_descripcion.sql` y `AAAA-MM-DD_NN_descripcion_rollback.sql`, con `NN` correlativo.
 2. **Encabezado** con el contexto del cambio y sus riesgos.
