@@ -112,6 +112,15 @@ Convención: **P0** crítico/seguridad, **P1** requisito faltante, **P2** infra 
   - El flujo completo de reserva con pago sigue funcionando (prueba manual y tests existentes).
 - **Dependencias:** T-00.
 
+### T-25 Chat: el admin no debe usar el hilo de usuario
+- **Problema:** la barra de navegación muestra "💬 Chat" también al admin. Ese enlace abre el chat de usuario, donde el admin escribe como `USUARIO` en su propio hilo y se contesta a sí mismo, mientras los mensajes de los usuarios esperan en el panel "Chat Soporte".
+- **Área:** Frontend.
+- **Criterios de aceptación:**
+  - Para el rol ADMIN, la navegación no muestra "💬 Chat" sino un acceso a "Chat Soporte" del panel admin, que abre directo esa sección.
+  - Si un admin entra a `/chat`, se lo redirige al panel admin (sección chat).
+  - Un test de punta a punta del chat (WebSocket + REST): el usuario escribe, el admin lo ve y responde, y el usuario recibe la respuesta.
+- **Dependencias:** T-00.
+
 ### T-01 Control de concurrencia en reservas
 - **Objetivo:** que dos requests simultáneos no puedan reservar el mismo turno.
 - **Área:** Backend / DB.
@@ -179,18 +188,9 @@ Convención: **P0** crítico/seguridad, **P1** requisito faltante, **P2** infra 
 
 ## P1: Requisitos del README sin cumplir
 
-### T-08 Base de datos no relacional (MongoDB)
-- **Decisión:** el motor es MongoDB.
-- **Objetivo:** incorporar la base no relacional que declara el README. El caso de uso inicial es el chat de soporte (`mensaje_chat`), que hoy está en Postgres. El caso de uso queda a confirmar al empezar el ticket.
-- **Área:** Backend / Infra.
-- **Criterios de aceptación:**
-  - Hay un servicio `mongo` en `docker-compose.yml` con healthcheck y credenciales por variables de entorno (documentadas en `.env.example`).
-  - El backend incorpora `spring-boot-starter-data-mongodb`, y los mensajes del chat se guardan y se leen desde MongoDB, con una capa de repositorio desacoplada.
-  - Los endpoints `/chat/*` y el WebSocket siguen funcionando igual para el frontend.
-  - Los mensajes existentes en Postgres se descartan (son de prueba), y no se escribe migración de datos. La entidad `MensajeChat` y la tabla `mensaje_chat` se retiran de Postgres, con un script SQL manual y su rollback en `db/migrations`.
-  - Hay documentación de qué datos van en cada base y por qué.
-  - Tests del repositorio con Testcontainers para MongoDB.
-- **Dependencias:** T-00, T-05.
+### T-08 Base de datos no relacional (MongoDB) — DESCARTADO
+- **Decisión (2026-11-28):** se descarta para terminar antes. El chat sigue en PostgreSQL (`mensaje_chat`).
+- **Consecuencia:** el requisito "bases relacionales y no relacionales" del README queda sin cumplir. T-23 debe corregir esa afirmación del README para que no prometa algo que no existe.
 
 ### T-09 Disponibilidad en tiempo real
 - **Objetivo:** que la grilla de turnos se actualice sin acción del usuario.
@@ -334,8 +334,8 @@ Convención: **P0** crítico/seguridad, **P1** requisito faltante, **P2** infra 
 - **Criterios de aceptación:**
   - Un README con requisitos, setup (compose y local), variables, tests, arquitectura y la tabla endpoint × rol.
   - Un `CLAUDE.md` con los comandos y las convenciones.
-  - Se corrige la afirmación sobre bases no relacionales según lo que quede implementado en T-08.
-- **Dependencias:** T-00, T-08, T-14, T-16.
+  - Se corrige la afirmación sobre bases no relacionales porque no hay base no relacional (T-08 descartado).
+- **Dependencias:** T-00, T-14, T-16.
 
 ---
 
@@ -345,13 +345,12 @@ Todos los tickets dependen de T-00 y se trabajan de a uno por rama, siguiendo el
 1. **Luego:** T-24 (antes que T-03), T-03, T-04, T-05, T-13.
 2. **Después:** T-01 → T-02 → T-12, y T-14, T-15.
 3. **Más tarde:** T-06, T-07, T-16, T-09, T-10, T-11.
-4. **Al final:** T-08, T-17, T-18, T-19, T-20, T-21, T-22, T-23.
+4. **Al final:** T-17, T-18, T-19, T-20, T-21, T-22, T-23.
 
 ## Decisiones tomadas
 - **Migraciones:** se mantienen los scripts SQL manuales, sin Flyway (T-13).
-- **Base no relacional:** MongoDB, con el chat de soporte como caso de uso inicial (T-08).
+- **Base no relacional:** se descarta MongoDB (T-08) para terminar antes; todo queda en PostgreSQL.
 - **`POST /reservas` directo:** se elimina, y queda solo el flujo con pago (T-24).
-- **Mensajes de chat existentes:** se descartan al pasar a MongoDB, porque son de prueba (T-08).
 
 ## Decisiones abiertas
 - Ninguna por ahora.
