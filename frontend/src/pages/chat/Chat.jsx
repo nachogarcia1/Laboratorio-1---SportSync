@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Navigate } from "react-router-dom";
 import { Client } from "@stomp/stompjs";
 import NavbarPrivate from "../../components/navbar/NavbarPrivate";
 import Footer from "../../components/footer/Footer";
@@ -11,6 +12,9 @@ function Chat() {
     catch { return null; }
   })();
 
+  // El admin atiende desde el panel: este es el hilo de soporte de un usuario, no el suyo.
+  const esAdmin = usuario?.rol === "ADMIN";
+
   const [mensajes,  setMensajes]  = useState([]);
   const [texto,     setTexto]     = useState("");
   const [conectado, setConectado] = useState(false);
@@ -18,7 +22,7 @@ function Chat() {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    if (!usuario) return;
+    if (!usuario || esAdmin) return;
 
     apiFetch(`/chat/historial/${usuario.id}`)
       .then(data => setMensajes(data))
@@ -59,6 +63,8 @@ function Chat() {
   function handleKey(e) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); }
   }
+
+  if (esAdmin) return <Navigate to="/admin?seccion=chat" replace />;
 
   return (
     <div className="chat-page">

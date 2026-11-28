@@ -51,7 +51,7 @@ const ACTIVIDAD = [
 ];
 
 function Admin() {
-  const [seccion, setSeccion]             = useState("dashboard");
+  const [seccion, setSeccion]             = useState(() => new URLSearchParams(window.location.search).get("seccion") || "dashboard");
   const [suspenderAbierto, setSuspender]  = useState(false);
   const [modalSede,        setModalSede]        = useState(false);
   const [modalCancha,      setModalCancha]       = useState(false);

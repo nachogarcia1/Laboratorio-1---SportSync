@@ -22,7 +22,9 @@ function NavbarPrivate() {
         <Link to="/buscar">Buscar Canchas</Link>
         <Link to="/mis-reservas">Mis Reservas</Link>
         <Link to="/mis-calificaciones">Mis Calificaciones</Link>
-        <Link to="/chat">💬 Chat</Link>
+        {usuario?.rol === "ADMIN"
+          ? <Link to="/admin?seccion=chat">💬 Chat Soporte</Link>
+          : <Link to="/chat">💬 Chat</Link>}
         <Link to="/perfil">Perfil</Link>
         {usuario?.rol === "ADMIN" && (
             <Link to="/admin">Panel Admin</Link>
