@@ -1,4 +1,12 @@
 -- =============================================================================
+-- >>> OBSOLETA — NO APLICAR (ver README.md, "Por qué la 02 está obsoleta") <<<
+-- Esta migración borra `latitud`/`longitud` de `sede`, pero hoy Sede.java usa esas
+-- columnas como fuente de verdad (la migración 09 las vuelve a agregar). Aplicarla
+-- deja la tabla sin columnas que la entidad necesita hasta que se aplique la 09.
+-- Se conserva solo como historial. El script no se modificó, solo este aviso.
+-- =============================================================================
+
+-- =============================================================================
 -- Migración 02 — sede: eliminar columnas muertas latitud/longitud
 -- =============================================================================
 -- El proyecto conserva la implementación PostGIS: la ubicación de cada sede se
