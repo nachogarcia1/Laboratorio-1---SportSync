@@ -5,6 +5,9 @@
 -- por SQL). Se agregan columnas latitud/longitud (double) como fuente de verdad
 -- para el mapa, y se cargan coordenadas reales aproximadas de las sedes existentes.
 -- =============================================================================
+-- NOTA: esta migración vuelve a agregar las columnas que eliminó la 02 (obsoleta).
+-- Los UPDATE de coordenadas usan los ids 6 a 10, que son las sedes de la base de
+-- desarrollo del equipo: en una base nueva no existen y no modifican nada.
 
 ALTER TABLE sede ADD COLUMN IF NOT EXISTS latitud  double precision;
 ALTER TABLE sede ADD COLUMN IF NOT EXISTS longitud double precision;
