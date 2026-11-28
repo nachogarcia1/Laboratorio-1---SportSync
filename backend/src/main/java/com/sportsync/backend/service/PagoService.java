@@ -15,6 +15,8 @@ import com.sportsync.backend.model.reserva.Pago;
 import com.sportsync.backend.model.reserva.Reserva;
 import com.sportsync.backend.repository.PagoRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,11 +48,14 @@ public class PagoService {
     private boolean simulacionForzada;
 
     private final PasarelaPago pasarelaPago;
+    private final Environment environment;
 
-    public PagoService(PagoRepository pagoRepo, ReservaService reservaService, PasarelaPago pasarelaPago) {
+    public PagoService(PagoRepository pagoRepo, ReservaService reservaService, PasarelaPago pasarelaPago,
+                       Environment environment) {
         this.pagoRepo = pagoRepo;
         this.reservaService = reservaService;
         this.pasarelaPago = pasarelaPago;
+        this.environment = environment;
     }
 
     public record IniciarResult(Long reservaId, Long pagoId, String initPoint, String preferenciaId) {}
@@ -59,9 +64,17 @@ public class PagoService {
         return accessToken != null && !accessToken.isBlank();
     }
 
-    /** Se simula cuando está forzado por config o cuando no hay credenciales de MP. */
+    private boolean esPerfilDev() {
+        return environment.acceptsProfiles(Profiles.of("dev"));
+    }
+
+    /**
+     * La simulación existe SOLO en el perfil dev (forzada por config, o porque no hay credenciales de MP).
+     * Fuera de dev está siempre deshabilitada: si no, un servidor sin MP configurado dejaría
+     * marcar reservas como pagadas desde /pagos/simular.
+     */
     private boolean usarSimulacion() {
-        return simulacionForzada || !mpConfigurado();
+        return esPerfilDev() && (simulacionForzada || !mpConfigurado());
     }
 
     /** Crea la reserva PENDIENTE_PAGO + el Pago + la preferencia de checkout en MP (o simulado). */
@@ -92,6 +105,11 @@ public class PagoService {
             pagoRepo.save(pago);
             String simUrl = frontendUrl + "/pago/simular?reserva=" + reserva.getId();
             return new IniciarResult(reserva.getId(), pago.getId(), simUrl, "SIMULADO");
+        }
+
+        if (!mpConfigurado()) {
+            throw new IllegalStateException(
+                    "Mercado Pago no está configurado (falta MP_ACCESS_TOKEN). Pagá con tarjeta.");
         }
 
         try {
