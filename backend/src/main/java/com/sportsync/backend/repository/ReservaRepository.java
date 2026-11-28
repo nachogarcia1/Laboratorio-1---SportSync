@@ -34,6 +34,9 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     // Reservas activas de una cancha en una fecha
     List<Reserva> findByCanchaIdAndFechaAndEstado(Long canchaId, LocalDate fecha, EstadoReserva estado);
 
+    // Reservas que ocupan el turno (confirmadas o con pago en curso)
+    List<Reserva> findByCanchaIdAndFechaAndEstadoIn(Long canchaId, LocalDate fecha, java.util.Collection<EstadoReserva> estados);
+
     // Reporte mensual: trae todo lo necesario en una sola query (sin N+1).
     @Query("""
         SELECT DISTINCT r FROM Reserva r
@@ -52,11 +55,31 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
         SELECT COUNT(r) > 0 FROM Reserva r
         WHERE r.cancha.id = :canchaId
         AND r.fecha = :fecha
-        AND r.estado = 'ACTIVA'
+        AND r.estado IN (com.sportsync.backend.model.admin.EstadoReserva.ACTIVA,
+                         com.sportsync.backend.model.admin.EstadoReserva.PENDIENTE_PAGO)
         AND r.horaInicio < :horaFin
         AND r.horaFin > :horaInicio
     """)
     boolean existeSolapamiento(
+            @Param("canchaId") Long canchaId,
+            @Param("fecha") LocalDate fecha,
+            @Param("horaInicio") LocalTime horaInicio,
+            @Param("horaFin") LocalTime horaFin
+    );
+
+    /** Igual que {@link #existeSolapamiento} pero ignorando una reserva (para revalidar una que ya existe). */
+    @Query("""
+        SELECT COUNT(r) > 0 FROM Reserva r
+        WHERE r.cancha.id = :canchaId
+        AND r.id <> :reservaId
+        AND r.fecha = :fecha
+        AND r.estado IN (com.sportsync.backend.model.admin.EstadoReserva.ACTIVA,
+                         com.sportsync.backend.model.admin.EstadoReserva.PENDIENTE_PAGO)
+        AND r.horaInicio < :horaFin
+        AND r.horaFin > :horaInicio
+    """)
+    boolean existeSolapamientoExcluyendo(
+            @Param("reservaId") Long reservaId,
             @Param("canchaId") Long canchaId,
             @Param("fecha") LocalDate fecha,
             @Param("horaInicio") LocalTime horaInicio,

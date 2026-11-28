@@ -17,6 +17,15 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     /** Busca el pago por el id de preferencia/transacción del proveedor (para el webhook). */
     Optional<Pago> findByPreferenciaId(String preferenciaId);
 
+    /** Pagos que siguen pendientes y cuya reserva sigue esperando el pago desde antes de {@code limite}. */
+    @Query("""
+        SELECT p FROM Pago p
+        WHERE p.estado = com.sportsync.backend.model.admin.EstadoPago.PENDIENTE
+        AND p.reserva.estado = com.sportsync.backend.model.admin.EstadoReserva.PENDIENTE_PAGO
+        AND p.createdAt < :limite
+    """)
+    java.util.List<Pago> findPendientesCreadosAntesDe(@Param("limite") java.time.LocalDateTime limite);
+
     Optional<Pago> findByProveedorId(String proveedorId);
 
     /** Pagos de varias reservas (batch, para el reporte sin N+1). */

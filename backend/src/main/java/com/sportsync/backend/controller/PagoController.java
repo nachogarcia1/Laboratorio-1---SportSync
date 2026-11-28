@@ -82,6 +82,8 @@ public class PagoController {
                                              @RequestBody com.sportsync.backend.dto.DatosTarjeta tarjeta) {
         try {
             return ResponseEntity.ok(service.procesarPagoTarjeta(reservaId, tarjeta));
+        } catch (TurnoNoDisponibleException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

@@ -38,6 +38,7 @@ public class ReservaService {
     private final ItemEquipamientoRepository itemRepo;
     private final ReservaEquipamientoRepository reservaEquipRepo;
     private final PrecioInteligenteService precioService;
+    private final ExpiracionReservasService expiracionService;
 
     // Horas mínimas para cancelar sin multa (configurable)
     private static final int HORAS_MIN_CANCELACION = 2;
@@ -58,19 +59,23 @@ public class ReservaService {
                           CanchaRepository canchaRepo,
                           UsuarioRepository usuarioRepo,
                           ItemEquipamientoRepository itemRepo,
-                          ReservaEquipamientoRepository reservaEquipRepo, PrecioInteligenteService precioService) {
+                          ReservaEquipamientoRepository reservaEquipRepo, PrecioInteligenteService precioService,
+                          ExpiracionReservasService expiracionService) {
         this.reservaRepo = reservaRepo;
         this.canchaRepo = canchaRepo;
         this.usuarioRepo = usuarioRepo;
         this.itemRepo = itemRepo;
         this.reservaEquipRepo = reservaEquipRepo;
         this.precioService = precioService;
+        this.expiracionService = expiracionService;
     }
 
     // ── UC-30: Slots disponibles ──────────────────────────────────────────────
 
     public List<Reserva> obtenerReservasDelDia(Long canchaId, LocalDate fecha) {
-        return reservaRepo.findByCanchaIdAndFechaAndEstado(canchaId, fecha, EstadoReserva.ACTIVA);
+        // Una reserva con el pago en curso también ocupa el turno (T-02).
+        return reservaRepo.findByCanchaIdAndFechaAndEstadoIn(
+                canchaId, fecha, List.of(EstadoReserva.ACTIVA, EstadoReserva.PENDIENTE_PAGO));
     }
 
     /** Antelación mínima (minutos) para reservar; el frontend la usa para grisar turnos. */
@@ -117,6 +122,9 @@ public class ReservaService {
             throw new IllegalArgumentException(
                     "Tenés que reservar con al menos " + antelacionMinimaMinutos + " minutos de anticipación.");
         }
+
+        // Libera los turnos de pagos abandonados antes de mirar si el turno está ocupado.
+        expiracionService.expirarVencidas();
 
         // UC-31: Validar anti-solapamiento
         boolean solapado = reservaRepo.existeSolapamiento(
@@ -248,9 +256,17 @@ public class ReservaService {
         return false;
     }
 
-    /** Confirma una reserva pendiente (pago aprobado) y dispara el recálculo de precios. */
+    /**
+     * Confirma una reserva cuyo pago fue aprobado y dispara el recálculo de precios.
+     * Si la reserva había vencido (CANCELADA por falta de pago) y el turno sigue libre, se reactiva.
+     *
+     * @return false si el turno ya lo tomó otra persona: la reserva queda cancelada y el pago hay que reembolsarlo
+     */
     @Transactional
-    public void confirmarReserva(Reserva reserva) {
+    public boolean confirmarReserva(Reserva reserva) {
+        if (reserva.getEstado() == EstadoReserva.ACTIVA) return true;
+        if (!puedeConfirmarse(reserva)) return false;
+
         reserva.setEstado(EstadoReserva.ACTIVA);
         reservaRepo.save(reserva);
         Long canchaId = reserva.getCancha().getId();
@@ -260,6 +276,24 @@ public class ReservaService {
                 precioService.recalcularCancha(canchaId);
             }
         });
+        return true;
+    }
+
+    /** Una reserva pendiente se puede confirmar; una vencida, solo si nadie más tomó el turno. */
+    private boolean puedeConfirmarse(Reserva r) {
+        if (r.getEstado() == EstadoReserva.PENDIENTE_PAGO) return true;
+        if (r.getEstado() != EstadoReserva.CANCELADA) return false;
+        return !reservaRepo.existeSolapamientoExcluyendo(
+                r.getId(), r.getCancha().getId(), r.getFecha(), r.getHoraInicio(), r.getHoraFin());
+    }
+
+    /** Antes de cobrar: falla si la reserva venció y otra persona ya tomó el turno (así no se cobra en vano). */
+    @Transactional(readOnly = true)
+    public void verificarQueSePuedePagar(Reserva reserva) {
+        if (!puedeConfirmarse(reserva) && reserva.getEstado() != EstadoReserva.ACTIVA) {
+            throw new TurnoNoDisponibleException(
+                    "La reserva venció y el turno ya no está disponible. Elegí otro horario.");
+        }
     }
 
     /** Cancela una reserva (pago rechazado/vencido/cancelado). */

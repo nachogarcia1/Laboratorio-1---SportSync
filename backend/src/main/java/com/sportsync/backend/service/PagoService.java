@@ -175,12 +175,25 @@ public class PagoService {
 
             // Transición de la reserva según el resultado del pago
             if (nuevo == EstadoPago.APROBADO) {
-                reservaService.confirmarReserva(pago.getReserva());
+                confirmarOMarcarReembolso(pago);
             } else if (nuevo == EstadoPago.RECHAZADO || nuevo == EstadoPago.CANCELADO || nuevo == EstadoPago.VENCIDO) {
                 reservaService.cancelarPorPago(pago.getReserva());
             }
         } catch (Exception e) {
             System.err.println("Error procesando webhook de Mercado Pago: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Confirma la reserva de un pago aprobado. Si el turno ya lo tomó otra persona (la reserva había vencido),
+     * el pago se marca REEMBOLSADO para que se devuelva el dinero: la devolución en el proveedor es manual.
+     */
+    private void confirmarOMarcarReembolso(Pago pago) {
+        if (!reservaService.confirmarReserva(pago.getReserva())) {
+            pago.setEstado(EstadoPago.REEMBOLSADO);
+            pagoRepo.save(pago);
+            System.err.println("Pago " + pago.getId() + " aprobado pero la reserva " + pago.getReserva().getId()
+                    + " ya venció y el turno fue tomado: REEMBOLSAR manualmente en el proveedor.");
         }
     }
 
@@ -212,7 +225,7 @@ public class PagoService {
         pagoRepo.save(pago);
 
         if (resultado == EstadoPago.APROBADO) {
-            reservaService.confirmarReserva(pago.getReserva());
+            confirmarOMarcarReembolso(pago);
         } else if (resultado == EstadoPago.RECHAZADO || resultado == EstadoPago.CANCELADO
                 || resultado == EstadoPago.VENCIDO) {
             reservaService.cancelarPorPago(pago.getReserva());
@@ -230,6 +243,8 @@ public class PagoService {
             Long reservaId, com.sportsync.backend.dto.DatosTarjeta tarjeta) {
         Pago pago = pagoRepo.findByReservaId(reservaId)
                 .orElseThrow(() -> new IllegalStateException("No hay pago para esa reserva."));
+        // Si la reserva venció y el turno ya es de otra persona, se corta antes de cobrar.
+        reservaService.verificarQueSePuedePagar(pago.getReserva());
 
         com.sportsync.backend.dto.ResultadoPago resultado = pasarelaPago.cobrar(
                 new com.sportsync.backend.dto.SolicitudPago(
@@ -241,7 +256,7 @@ public class PagoService {
             pago.setProveedorId(resultado.getTransaccionId());
             pago.setEstado(EstadoPago.APROBADO);
             pagoRepo.save(pago);
-            reservaService.confirmarReserva(pago.getReserva());
+            confirmarOMarcarReembolso(pago);
         }
         return resultado;
     }
