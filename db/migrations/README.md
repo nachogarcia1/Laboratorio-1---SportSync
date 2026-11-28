@@ -3,7 +3,7 @@
 El proyecto **no usa Flyway/Liquibase**. Estas migraciones son scripts SQL
 reproducibles que se aplican a mano y quedan versionados. No hay una tabla que
 registre cuáles se aplicaron: por eso todas están escritas para ser **idempotentes**
-(se pueden volver a ejecutar sin romper nada), con la excepción marcada de la 02.
+(se pueden volver a ejecutar sin romper nada).
 
 ## Qué hace Hibernate y qué hacen los scripts
 
@@ -75,7 +75,7 @@ encendido, Hibernate **no** vuelve a crear las tablas (solo lo hace al arrancar)
 | # | Archivo | Qué hace | Rollback |
 |---|---------|----------|----------|
 | 01 | `2026-06-13_01_reserva_precio_inteligente.sql` | Agrega `precio_base` y `descuento_aplicado` a `reserva` (NULL → backfill → NOT NULL), preservando las filas existentes | Borra las dos columnas. Solo tiene sentido si también se revierte el código |
-| 02 | `2026-06-13_02_sede_drop_columnas_muertas.sql` | **OBSOLETA, no aplicar.** Eliminaba `latitud`/`longitud` de `sede`. La 09 las volvió a agregar y hoy `Sede.java` las usa | Recrea las columnas vacías |
+| 02 | — | **Eliminada** (ver más abajo). El número no se reutiliza | — |
 | 03 | `2026-06-13_03_usuario_verificacion.sql` | Agrega `verificado` y `auth_provider` a `usuario` (los existentes quedan sin verificar) y crea `codigo_verificacion` | Borra la tabla y las columnas: **se pierden los códigos y el estado de verificación** |
 | 04 | `2026-06-13_04_usuario_dni_nullable.sql` | `usuario.dni` pasa a admitir NULL (cuentas de Google) | Falla si hay usuarios con `dni` NULL |
 | 05 | `2026-06-13_05_sede_zona_horaria.sql` | Agrega `sede.zona_horaria` (por defecto `America/Argentina/Buenos_Aires`) | Borra la columna |
@@ -84,23 +84,23 @@ encendido, Hibernate **no** vuelve a crear las tablas (solo lo hace al arrancar)
 | 08 | `2026-06-15_08_cancha_horario.sql` | Agrega horario propio a `cancha` (apertura, cierre, duración de turno, días) y lo completa con el de su sede | Borra las 4 columnas (se pierden los horarios propios) |
 | 09 | `2026-06-15_09_sede_lat_lng.sql` | Agrega `sede.latitud`/`longitud` como columnas simples y carga coordenadas de las sedes con id 6 a 10 | Borra las columnas |
 
-### Por qué la 02 está obsoleta
+### Por qué falta la 02
 
-La 02 se escribió cuando `Sede.java` calculaba `latitud`/`longitud` a partir del `Point` de PostGIS, así
-que las columnas físicas eran "esquema muerto". Después la entidad pasó a usar esas columnas como fuente
-de verdad (el cambio "gps fix") y la 09 las recreó. El resultado de aplicar 02 y luego 09 es el mismo que
-no aplicar ninguna, pero **entre las dos** la tabla `sede` queda sin columnas que la entidad necesita.
-Por eso no se aplica la 02 ni se vuelve a aplicar sola.
+La 02 borraba `latitud`/`longitud` de `sede`: se escribió cuando `Sede.java` las calculaba a partir del `Point`
+de PostGIS y las columnas físicas eran "esquema muerto". Después la entidad pasó a usar esas columnas como fuente
+de verdad (el cambio "gps fix") y la 09 las recreó. Aplicar la 02 y luego la 09 deja el mismo resultado que no
+aplicar ninguna, pero entre las dos `sede` queda sin columnas que la entidad necesita, así que se **eliminó**
+del repositorio. Sigue en el historial de git (`git log --diff-filter=D -- db/migrations/2026-06-13_02_*`).
 
 La 09 carga coordenadas con `UPDATE ... WHERE id = 6..10`: son los ids de las sedes de la base de
 desarrollo del equipo. En una base nueva no existe ninguna de esas filas y la sentencia no modifica nada.
 
 ## Cómo aplicar a una base existente
 
-Con la base levantada, aplicá las que falten, en orden, **sin** los `_rollback` y **sin** la 02:
+Con la base levantada, aplicá las que falten, en orden y **sin** los `_rollback`:
 
 ```bash
-for f in $(ls db/migrations/*.sql | grep -v -e _rollback -e _02_ | sort); do
+for f in $(ls db/migrations/*.sql | grep -v _rollback | sort); do
   echo ">> $f"
   docker exec -i postgres_app psql -U postgres -d sport_db -v ON_ERROR_STOP=1 < "$f" || break
 done
@@ -131,4 +131,4 @@ La próxima es la **10**.
    ```
 8. **Actualizar esta tabla** en el mismo PR.
 9. **No editar migraciones ya aplicadas por otras personas.** Si hay que corregir algo, se agrega una
-   migración nueva. La única excepción son los avisos en comentarios, como el de la 02.
+   migración nueva. La única excepción son los avisos en comentarios.
